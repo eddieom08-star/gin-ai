@@ -1,11 +1,15 @@
 // Vercel Serverless Function - List Conversations
 // GET /api/conversations?agent_id=xxx
+//
+// Required Vercel Environment Variables:
+//   ELEVENLABS_API_KEY - Your ElevenLabs API key
+//   ELEVENLABS_AGENT_ID - Default agent ID (optional, can override via query param)
 
 export default async function handler(req, res) {
     // CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, xi-api-key');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
     if (req.method === 'OPTIONS') {
         return res.status(204).end();
@@ -15,12 +19,14 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
-    const apiKey = req.headers['xi-api-key'];
+    // API key from environment variable (secure, never exposed to browser)
+    const apiKey = process.env.ELEVENLABS_API_KEY;
     if (!apiKey) {
-        return res.status(401).json({ error: 'Missing xi-api-key header' });
+        return res.status(500).json({ error: 'Server misconfigured: Missing ELEVENLABS_API_KEY env var' });
     }
 
-    const { agent_id } = req.query;
+    // Agent ID from query param or environment variable
+    const agent_id = req.query.agent_id || process.env.ELEVENLABS_AGENT_ID;
     const url = `https://api.elevenlabs.io/v1/convai/conversations${agent_id ? `?agent_id=${agent_id}` : ''}`;
 
     try {

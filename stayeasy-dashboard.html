@@ -43,12 +43,11 @@
     <script type="text/babel">
         const { useState, useEffect, useCallback } = React;
 
-        // Configuration - Set your API key below or via URL parameter: ?apiKey=YOUR_KEY
+        // Configuration - API key is stored securely in Vercel environment variables
+        // The browser never sees the API key - all auth happens server-side
         const urlParams = new URLSearchParams(window.location.search);
-        // Use /api proxy routes (works on Vercel and local proxy server)
         const CONFIG = {
-            API_KEY: urlParams.get('apiKey') || 'YOUR_ELEVENLABS_API_KEY',
-            AGENT_ID: urlParams.get('agentId') || 'agent_0401kfef8r38f5fvascw528db3q5',
+            AGENT_ID: urlParams.get('agentId') || '',  // Optional override, uses server default if empty
             BASE_URL: '/api'
         };
 
@@ -102,17 +101,15 @@
             return { overview, actions, intents };
         };
 
-        // API Functions
+        // API Functions - No credentials needed, server handles auth via env vars
         const fetchConversations = async () => {
-            const url = `${CONFIG.BASE_URL}/conversations?agent_id=${CONFIG.AGENT_ID}`;
-            const response = await fetch(url, {
-                headers: { 'xi-api-key': CONFIG.API_KEY }
-            });
+            const params = CONFIG.AGENT_ID ? `?agent_id=${CONFIG.AGENT_ID}` : '';
+            const response = await fetch(`${CONFIG.BASE_URL}/conversations${params}`);
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
-                if (response.status === 401) throw new Error('Invalid API key. Please check your credentials.');
-                if (response.status === 404) throw new Error('Agent not found. Verify your Agent ID exists.');
-                if (response.status === 403) throw new Error('CORS blocked. Try a different proxy or run locally.');
+                if (response.status === 500) throw new Error(errorData.error || 'Server error. Check Vercel env vars.');
+                if (response.status === 401) throw new Error('Invalid API key configured on server.');
+                if (response.status === 404) throw new Error('Agent not found. Check ELEVENLABS_AGENT_ID.');
                 throw new Error(errorData.detail?.message || errorData.error || `API Error: ${response.status}`);
             }
             const data = await response.json();
@@ -120,10 +117,7 @@
         };
 
         const fetchConversationDetail = async (conversationId) => {
-            const url = `${CONFIG.BASE_URL}/conversations/${conversationId}`;
-            const response = await fetch(url, {
-                headers: { 'xi-api-key': CONFIG.API_KEY }
-            });
+            const response = await fetch(`${CONFIG.BASE_URL}/conversations/${conversationId}`);
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
                 throw new Error(errorData.detail?.message || errorData.error || `API Error: ${response.status}`);
@@ -408,65 +402,18 @@
             );
         };
 
-        // API Key Setup Component
-        const ApiKeySetup = ({ onSave }) => {
-            const [apiKey, setApiKey] = useState('');
-            const [agentId, setAgentId] = useState(CONFIG.AGENT_ID);
-            return (
-                <div className="h-screen flex items-center justify-center bg-se-dark">
-                    <div className="bg-se-card border border-se-border rounded-xl p-8 w-full max-w-md">
-                        <div className="flex items-center gap-3 mb-6">
-                            <Icons.Logo />
-                            <h1 className="text-xl font-bold">StayEasy Dashboard</h1>
-                        </div>
-                        <p className="text-se-muted text-sm mb-6">Enter your ElevenLabs API credentials to connect to the voice agent.</p>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium mb-2">API Key</label>
-                                <input type="password" value={apiKey} onChange={e => setApiKey(e.target.value)}
-                                    placeholder="sk_..." className="w-full px-4 py-2.5 bg-se-dark border border-se-border rounded-lg focus:outline-none focus:border-se-accent" />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium mb-2">Agent ID</label>
-                                <input type="text" value={agentId} onChange={e => setAgentId(e.target.value)}
-                                    placeholder="agent_..." className="w-full px-4 py-2.5 bg-se-dark border border-se-border rounded-lg focus:outline-none focus:border-se-accent" />
-                            </div>
-                            <button onClick={() => onSave(apiKey, agentId)} disabled={!apiKey}
-                                className="w-full py-2.5 bg-se-accent text-white rounded-lg font-medium hover:bg-se-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                                Connect
-                            </button>
-                        </div>
-                        <p className="text-se-muted text-xs mt-4 text-center">Your credentials are stored locally in this session only.</p>
-                    </div>
-                </div>
-            );
-        };
-
         // Main App
         const App = () => {
-            const [apiKey, setApiKey] = useState(CONFIG.API_KEY !== 'YOUR_ELEVENLABS_API_KEY' ? CONFIG.API_KEY : '');
-            const [agentId, setAgentId] = useState(CONFIG.AGENT_ID);
             const [activeNav, setActiveNav] = useState('conversations');
             const [conversations, setConversations] = useState([]);
             const [selectedId, setSelectedId] = useState(null);
             const [selectedConversation, setSelectedConversation] = useState(null);
-            const [listLoading, setListLoading] = useState(false);
+            const [listLoading, setListLoading] = useState(true);
             const [listError, setListError] = useState(null);
             const [detailLoading, setDetailLoading] = useState(false);
             const [detailError, setDetailError] = useState(null);
             const [filter, setFilter] = useState('all');
             const [search, setSearch] = useState('');
-
-            const handleApiKeySave = (key, agent) => {
-                setApiKey(key);
-                setAgentId(agent);
-                CONFIG.API_KEY = key;
-                CONFIG.AGENT_ID = agent;
-            };
-
-            if (!apiKey) {
-                return <ApiKeySetup onSave={handleApiKeySave} />;
-            }
 
             const loadConversations = useCallback(async () => {
                 setListLoading(true);
@@ -479,7 +426,7 @@
                 } finally {
                     setListLoading(false);
                 }
-            }, [apiKey]);
+            }, []);
 
             const loadConversationDetail = useCallback(async (id) => {
                 setDetailLoading(true);
@@ -518,7 +465,6 @@
                         loading={listLoading}
                         error={listError}
                         onRefresh={loadConversations}
-                        onDisconnect={() => setApiKey('')}
                         filter={filter}
                         setFilter={setFilter}
                         search={search}
