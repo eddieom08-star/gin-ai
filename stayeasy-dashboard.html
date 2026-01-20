@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StayEasy - Voice Agent Dashboard</title>
+    <title>gin-ai - Voice Agent Dashboard</title>
     <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -24,6 +24,7 @@
                         'se-error': '#ef4444',
                         'se-text': '#e5e7eb',
                         'se-muted': '#9ca3af',
+                        'se-blue': '#3b82f6',
                     }
                 }
             }
@@ -41,88 +42,315 @@
 <body class="bg-se-dark text-se-text">
     <div id="root"></div>
     <script type="text/babel">
-        const { useState, useEffect, useCallback } = React;
+        const { useState, useEffect, useMemo } = React;
 
-        // Configuration - API key is stored securely in Vercel environment variables
-        // The browser never sees the API key - all auth happens server-side
-        const urlParams = new URLSearchParams(window.location.search);
-        const CONFIG = {
-            AGENT_ID: urlParams.get('agentId') || '',  // Optional override, uses server default if empty
-            BASE_URL: '/api'
-        };
+        // Mock Data
+        const MOCK_CONVERSATIONS = [
+            {
+                id: "conv-001",
+                date: "2026-01-20T15:00:00Z",
+                duration: "2:49",
+                messageCount: 17,
+                channel: "voice",
+                status: "successful",
+                transcript: [
+                    { role: "agent", content: "Hello, thank you for calling TechStore support. How can I help you today?", timestamp: "00:00" },
+                    { role: "customer", content: "Yeah, I'm really frustrated. I ordered a laptop three weeks ago and it still hasn't arrived. Order number 4521.", timestamp: "00:05" },
+                    { role: "agent", content: "I'm sorry to hear about the delay with your order. Let me look into that for you right away. Can you confirm the email address on your account?", timestamp: "00:15" },
+                    { role: "customer", content: "It's john.smith@email.com", timestamp: "00:22" },
+                    { role: "agent", content: "Thank you, John. I can see your order #4521 here. It looks like there was a shipping delay due to a warehouse issue. I sincerely apologize for this inconvenience.", timestamp: "00:30" },
+                    { role: "customer", content: "This is unacceptable. I needed this laptop for work.", timestamp: "00:45" },
+                    { role: "agent", content: "I completely understand your frustration, and you're right to be upset. Let me see what I can do to make this right. I can confirm your laptop shipped yesterday and will arrive by Tuesday.", timestamp: "00:52" },
+                    { role: "customer", content: "Tuesday? That's still five more days.", timestamp: "01:05" },
+                    { role: "agent", content: "You're right, and I want to make this up to you. I'm applying a 15% discount to your order, and I'm also adding a $25 credit to your account for your next purchase. Would that help?", timestamp: "01:12" },
+                    { role: "customer", content: "Well... okay, I guess that's fair. You're sure it will arrive Tuesday?", timestamp: "01:35" },
+                    { role: "agent", content: "Absolutely. I've flagged your order for priority handling and you'll receive tracking updates via email. Is there anything else I can help with today?", timestamp: "01:42" },
+                    { role: "customer", content: "No, that's fine. Thanks for sorting it out.", timestamp: "02:00" },
+                    { role: "agent", content: "Thank you for your patience, John. Have a great day!", timestamp: "02:05" }
+                ],
+                proseSummary: "The customer called about a delayed order #4521 for a laptop that was three weeks overdue. The agent identified a warehouse shipping issue and confirmed the item shipped yesterday with Tuesday delivery. Customer was initially frustrated but accepted the resolution after the agent offered a 15% discount on the order and a $25 account credit. No follow-up action required.",
+                structuredSummary: {
+                    outcome: "resolved",
+                    sentiment: { start: "frustrated", end: "satisfied" },
+                    topics: ["delivery_delay", "order_status", "compensation"],
+                    actionItems: [],
+                    followUpRequired: false,
+                    keyEntities: { "order_id": "4521", "discount_applied": "15%", "account_credit": "$25", "expected_delivery": "Tuesday" },
+                    summary: "Delayed laptop order resolved with delivery confirmation (Tuesday) plus 15% discount and $25 credit."
+                },
+                evaluationResults: [
+                    { criteriaId: "crit-001", criteriaName: "Issue Resolution", passed: true, reasoning: "Customer's primary concern about delayed delivery was fully addressed." },
+                    { criteriaId: "crit-002", criteriaName: "Empathy & Tone", passed: true, reasoning: "Agent acknowledged customer's frustration multiple times, apologized sincerely." },
+                    { criteriaId: "crit-003", criteriaName: "Compliance Adherence", passed: true, reasoning: "Agent followed proper verification procedures." }
+                ]
+            },
+            {
+                id: "conv-002",
+                date: "2026-01-20T14:30:00Z",
+                duration: "4:12",
+                messageCount: 23,
+                channel: "voice",
+                status: "successful",
+                transcript: [
+                    { role: "agent", content: "Thank you for calling TechStore. How can I assist you?", timestamp: "00:00" },
+                    { role: "customer", content: "Hi, I'm having trouble connecting my new smart speaker to my WiFi. I've tried everything.", timestamp: "00:08" },
+                    { role: "agent", content: "I'd be happy to help you with that. Can you tell me which model you have?", timestamp: "00:18" },
+                    { role: "customer", content: "It's the SoundMax Pro 3000.", timestamp: "00:25" },
+                    { role: "agent", content: "Great choice! Let's troubleshoot this together. First, can you confirm the speaker is in pairing mode? There should be a blinking blue light.", timestamp: "00:32" },
+                    { role: "customer", content: "Yes, it's blinking blue.", timestamp: "00:45" },
+                    { role: "agent", content: "Perfect. Now, on your phone, go to Settings, then WiFi. Do you see a network called 'SoundMax-Setup'?", timestamp: "00:52" },
+                    { role: "customer", content: "Um... no, I don't see it.", timestamp: "01:15" },
+                    { role: "agent", content: "Let's try resetting the speaker. Hold the power button for 15 seconds until you hear a chime.", timestamp: "01:22" },
+                    { role: "customer", content: "Okay, doing that now... I heard the chime.", timestamp: "01:45" },
+                    { role: "agent", content: "Excellent. Now the blue light should blink faster. Check your WiFi networks again.", timestamp: "01:52" },
+                    { role: "customer", content: "Oh! I see it now - SoundMax-Setup is there!", timestamp: "02:10" },
+                    { role: "agent", content: "Great progress! Connect to that network, then open the SoundMax app. It should guide you through the rest.", timestamp: "02:18" },
+                    { role: "customer", content: "It's playing! Thank you so much, I was so frustrated with this.", timestamp: "03:45" },
+                    { role: "agent", content: "You're very welcome! Is there anything else I can help you with today?", timestamp: "03:52" },
+                    { role: "customer", content: "No, that's all. Thanks again!", timestamp: "04:00" }
+                ],
+                proseSummary: "Customer called for help connecting SoundMax Pro 3000 smart speaker to WiFi. Initial setup network wasn't visible. Agent guided customer through device reset which resolved the issue. Speaker successfully connected and playing music.",
+                structuredSummary: {
+                    outcome: "resolved",
+                    sentiment: { start: "frustrated", end: "satisfied" },
+                    topics: ["technical_support", "device_setup", "wifi_connectivity"],
+                    actionItems: [],
+                    followUpRequired: false,
+                    keyEntities: { "product": "SoundMax Pro 3000", "issue_type": "WiFi connectivity", "resolution": "Device reset" },
+                    summary: "WiFi connectivity issue with SoundMax Pro 3000 resolved via device reset and guided setup."
+                },
+                evaluationResults: [
+                    { criteriaId: "crit-001", criteriaName: "Issue Resolution", passed: true, reasoning: "Technical issue was fully resolved. Customer confirmed speaker is connected and playing music." },
+                    { criteriaId: "crit-002", criteriaName: "Empathy & Tone", passed: true, reasoning: "Agent maintained patient, encouraging tone throughout troubleshooting." },
+                    { criteriaId: "crit-003", criteriaName: "Compliance Adherence", passed: true, reasoning: "Agent followed standard troubleshooting protocol." }
+                ]
+            },
+            {
+                id: "conv-003",
+                date: "2026-01-20T13:15:00Z",
+                duration: "1:34",
+                messageCount: 8,
+                channel: "chat",
+                status: "successful",
+                transcript: [
+                    { role: "agent", content: "Hi! Welcome to TechStore support. How can I help you today?", timestamp: "00:00" },
+                    { role: "customer", content: "I need to return a keyboard I bought last week. It's not working properly.", timestamp: "00:12" },
+                    { role: "agent", content: "I'm sorry to hear the keyboard isn't working well. I can help with that return. Could you provide your order number?", timestamp: "00:20" },
+                    { role: "customer", content: "Order #7823", timestamp: "00:35" },
+                    { role: "agent", content: "Thank you. I can see your MechType Pro keyboard order from January 13th. Since it's within our 30-day return window and appears to be defective, I'm generating a prepaid return label for you now.", timestamp: "00:45" },
+                    { role: "customer", content: "Great, how long until I get my refund?", timestamp: "01:02" },
+                    { role: "agent", content: "Once we receive the keyboard, your refund will process within 3-5 business days. I've sent the return label to your email. Would you like a replacement keyboard instead of a refund?", timestamp: "01:10" },
+                    { role: "customer", content: "No, just the refund please. Thanks for making this easy.", timestamp: "01:25" },
+                    { role: "agent", content: "You're welcome! The return label is on its way. Is there anything else I can help with?", timestamp: "01:30" }
+                ],
+                proseSummary: "Customer requested return for defective MechType Pro keyboard from order #7823. Agent verified order within return window and generated prepaid return label. Customer opted for refund over replacement.",
+                structuredSummary: {
+                    outcome: "resolved",
+                    sentiment: { start: "neutral", end: "satisfied" },
+                    topics: ["returns", "defective_product", "refund"],
+                    actionItems: [],
+                    followUpRequired: false,
+                    keyEntities: { "order_id": "7823", "product": "MechType Pro keyboard", "return_reason": "Defective", "refund_timeline": "3-5 business days" },
+                    summary: "Defective keyboard return processed. Prepaid label sent, refund in 3-5 days after receipt."
+                },
+                evaluationResults: [
+                    { criteriaId: "crit-001", criteriaName: "Issue Resolution", passed: true, reasoning: "Return request fully processed. Customer received return label and clear timeline for refund." },
+                    { criteriaId: "crit-002", criteriaName: "Empathy & Tone", passed: true, reasoning: "Agent apologized for the product issue and made the process efficient." },
+                    { criteriaId: "crit-003", criteriaName: "Compliance Adherence", passed: true, reasoning: "Agent verified return window eligibility and offered replacement before refund as per policy." }
+                ]
+            },
+            {
+                id: "conv-004",
+                date: "2026-01-20T11:45:00Z",
+                duration: "3:28",
+                messageCount: 15,
+                channel: "voice",
+                status: "failed",
+                transcript: [
+                    { role: "agent", content: "Hello, thank you for calling TechStore. How may I help you?", timestamp: "00:00" },
+                    { role: "customer", content: "I need to dispute a charge on my account. I was charged twice for the same order.", timestamp: "00:10" },
+                    { role: "agent", content: "I apologize for that inconvenience. I can look into that for you. May I have your account email?", timestamp: "00:18" },
+                    { role: "customer", content: "sarah.jones@email.com", timestamp: "00:28" },
+                    { role: "agent", content: "Thank you, Sarah. I can see your recent orders. Which charge would you like me to investigate?", timestamp: "00:38" },
+                    { role: "customer", content: "The order from January 15th - I was charged $249.99 twice. That's almost $500 taken from my account!", timestamp: "00:50" },
+                    { role: "agent", content: "I understand how concerning that must be. Let me check the transaction details... I can see the two charges, but I'm unable to process refunds for billing disputes. I'll need to transfer you to our billing department.", timestamp: "01:15" },
+                    { role: "customer", content: "Are you serious? I've been on hold for 20 minutes already!", timestamp: "01:35" },
+                    { role: "agent", content: "I sincerely apologize for the wait and the inconvenience. Unfortunately, I don't have access to process refunds directly. The billing team will be able to resolve this immediately.", timestamp: "01:48" },
+                    { role: "customer", content: "Fine. How long will I have to wait?", timestamp: "02:10" },
+                    { role: "agent", content: "Current wait times for billing are approximately 10 minutes. I'll add a priority note to your case so they have all the context.", timestamp: "02:20" },
+                    { role: "customer", content: "This is ridiculous but fine, transfer me.", timestamp: "02:45" },
+                    { role: "agent", content: "I'm transferring you now. I've included all the details about the duplicate charge. Thank you for your patience, Sarah.", timestamp: "02:55" }
+                ],
+                proseSummary: "Customer reported duplicate charge of $249.99 on January 15th order. Agent verified charges but lacked authorization to process billing disputes. Customer was frustrated about wait time and need for transfer. Agent transferred to billing department with case notes and priority flag.",
+                structuredSummary: {
+                    outcome: "handed_over",
+                    sentiment: { start: "frustrated", end: "frustrated" },
+                    topics: ["billing_dispute", "duplicate_charge", "refund_request"],
+                    actionItems: ["Billing team to process refund for duplicate charge", "Verify customer bank statement after resolution"],
+                    followUpRequired: true,
+                    keyEntities: { "customer_email": "sarah.jones@email.com", "charge_amount": "$249.99", "charge_date": "January 15th", "issue": "Duplicate charge" },
+                    summary: "Duplicate charge dispute transferred to billing. Customer frustrated about wait time."
+                },
+                evaluationResults: [
+                    { criteriaId: "crit-001", criteriaName: "Issue Resolution", passed: false, reasoning: "Issue was not resolved during conversation. Customer had to be transferred to billing department." },
+                    { criteriaId: "crit-002", criteriaName: "Empathy & Tone", passed: true, reasoning: "Agent acknowledged frustration, apologized multiple times, and explained limitations clearly." },
+                    { criteriaId: "crit-003", criteriaName: "Compliance Adherence", passed: true, reasoning: "Agent correctly identified authorization limits and transferred to appropriate department." },
+                    { criteriaId: "crit-004", criteriaName: "Handover Quality", passed: true, reasoning: "Agent provided complete context for transfer including duplicate charge details and added priority flag." }
+                ]
+            },
+            {
+                id: "conv-005",
+                date: "2026-01-20T10:20:00Z",
+                duration: "0:52",
+                messageCount: 5,
+                channel: "chat",
+                status: "failed",
+                transcript: [
+                    { role: "agent", content: "Hello! How can I help you today?", timestamp: "00:00" },
+                    { role: "customer", content: "Cancel my subscription", timestamp: "00:15" },
+                    { role: "agent", content: "I can help you with that. Before I process the cancellation, may I ask what's prompting you to cancel? We may be able to address any concerns.", timestamp: "00:22" },
+                    { role: "customer", content: "...", timestamp: "00:45" }
+                ],
+                proseSummary: "Customer requested subscription cancellation but abandoned the conversation before providing account details or explaining reason for cancellation. No action was taken.",
+                structuredSummary: {
+                    outcome: "abandoned",
+                    sentiment: { start: "neutral", end: "neutral" },
+                    topics: ["subscription_cancellation"],
+                    actionItems: ["Send follow-up email about cancellation request", "Consider retention offer"],
+                    followUpRequired: true,
+                    keyEntities: { "request_type": "Subscription cancellation" },
+                    summary: "Customer abandoned chat before completing cancellation request. Follow-up recommended."
+                },
+                evaluationResults: [
+                    { criteriaId: "crit-001", criteriaName: "Issue Resolution", passed: false, reasoning: "Customer's cancellation request was not processed. Conversation abandoned before completion." },
+                    { criteriaId: "crit-002", criteriaName: "Empathy & Tone", passed: false, reasoning: "Agent's retention question may have caused abandonment." },
+                    { criteriaId: "crit-003", criteriaName: "Compliance Adherence", passed: true, reasoning: "Agent followed retention script by asking reason for cancellation before processing." }
+                ]
+            },
+            {
+                id: "conv-006",
+                date: "2026-01-19T16:30:00Z",
+                duration: "5:45",
+                messageCount: 28,
+                channel: "voice",
+                status: "failed",
+                transcript: [
+                    { role: "agent", content: "Thank you for calling TechStore support. How can I help?", timestamp: "00:00" },
+                    { role: "customer", content: "I want to speak to a manager right now. Your company charged me for a warranty I never signed up for!", timestamp: "00:08" },
+                    { role: "agent", content: "I'm sorry to hear you're upset. I'd like to help resolve this for you. Can you tell me more about the charge you're seeing?", timestamp: "00:18" },
+                    { role: "customer", content: "I don't want to explain it again! I've called three times already. Just get me a manager.", timestamp: "00:30" },
+                    { role: "agent", content: "I understand you've had to call multiple times and that's frustrating. Let me pull up your account and see what's been documented from your previous calls.", timestamp: "00:42" },
+                    { role: "customer", content: "Why should I trust that you'll actually help? The last two agents said the same thing.", timestamp: "01:00" },
+                    { role: "agent", content: "That's a fair concern. I can see from your account history that there's been an ongoing issue with a $89 extended warranty charge. I want to resolve this for you today.", timestamp: "01:15" },
+                    { role: "customer", content: "I never agreed to any warranty! This is fraud!", timestamp: "01:30" },
+                    { role: "agent", content: "I can see how you'd feel that way, and I want to make this right. Looking at the records, it appears the warranty was added during checkout on December 5th, but I don't see a confirmation click.", timestamp: "01:48" },
+                    { role: "customer", content: "Because I never clicked it! Your website added it automatically!", timestamp: "02:05" },
+                    { role: "agent", content: "I believe you. This looks like a system error on our end. I'm escalating this to our senior support team who has the authority to refund and investigate the checkout flow.", timestamp: "02:22" },
+                    { role: "customer", content: "Finally someone who believes me. How long will this take?", timestamp: "02:45" },
+                    { role: "agent", content: "A senior specialist will call you back within 2 hours. They'll have full authority to issue the refund and provide additional compensation for your trouble.", timestamp: "02:58" },
+                    { role: "customer", content: "It better be today. I've wasted hours on this.", timestamp: "03:20" },
+                    { role: "agent", content: "Absolutely, you'll hear back today. I'm flagging this as urgent and documenting everything so you won't have to repeat yourself again.", timestamp: "03:30" }
+                ],
+                proseSummary: "Customer escalation regarding unauthorized $89 extended warranty charge. Customer had called three times previously without resolution. Agent identified potential checkout system error where warranty was added without confirmation click. Escalated to senior support team for refund authority and investigation. Callback promised within 2 hours.",
+                structuredSummary: {
+                    outcome: "escalated",
+                    sentiment: { start: "frustrated", end: "neutral" },
+                    topics: ["billing_dispute", "unauthorized_charge", "escalation", "warranty"],
+                    actionItems: ["Senior support callback within 2 hours", "Process $89 warranty refund", "Investigate checkout flow for auto-add bug", "Consider additional compensation"],
+                    followUpRequired: true,
+                    keyEntities: { "charge_amount": "$89", "charge_type": "Extended warranty", "charge_date": "December 5th", "previous_calls": "3", "callback_timeline": "2 hours" },
+                    summary: "Unauthorized warranty charge escalated to senior team. Potential checkout bug identified. Callback within 2 hours."
+                },
+                evaluationResults: [
+                    { criteriaId: "crit-001", criteriaName: "Issue Resolution", passed: false, reasoning: "Issue was not resolved during conversation. Required escalation to senior team with callback." },
+                    { criteriaId: "crit-002", criteriaName: "Empathy & Tone", passed: true, reasoning: "Agent validated customer's frustration, believed their account of events, and acknowledged previous call failures." },
+                    { criteriaId: "crit-003", criteriaName: "Compliance Adherence", passed: true, reasoning: "Agent correctly escalated issue beyond their authority rather than making unauthorized commitments." },
+                    { criteriaId: "crit-004", criteriaName: "Handover Quality", passed: true, reasoning: "Comprehensive documentation provided for senior team including history, issue details, and customer expectations." }
+                ]
+            },
+            {
+                id: "conv-007",
+                date: "2026-01-19T14:00:00Z",
+                duration: "1:15",
+                messageCount: 7,
+                channel: "chat",
+                status: "successful",
+                transcript: [
+                    { role: "agent", content: "Hi there! How can I help you today?", timestamp: "00:00" },
+                    { role: "customer", content: "Where's my order? Tracking says delivered but I don't have it", timestamp: "00:10" },
+                    { role: "agent", content: "I'll look into that right away. What's your order number?", timestamp: "00:18" },
+                    { role: "customer", content: "TK-99210", timestamp: "00:28" },
+                    { role: "agent", content: "Thanks. I can see it was marked delivered at 2:34 PM today. Sometimes packages are left in a safe location. Could you check around your door, porch, or with neighbors?", timestamp: "00:38" },
+                    { role: "customer", content: "Oh wait, found it! It was behind the plant pot. Sorry about that!", timestamp: "01:00" },
+                    { role: "agent", content: "Great news! No need to apologize - glad it's there safely. Anything else I can help with?", timestamp: "01:08" }
+                ],
+                proseSummary: "Customer reported missing package for order TK-99210. Agent verified delivery status and suggested checking safe locations. Customer found package behind plant pot. Quick resolution.",
+                structuredSummary: {
+                    outcome: "resolved",
+                    sentiment: { start: "neutral", end: "satisfied" },
+                    topics: ["order_status", "delivery_inquiry"],
+                    actionItems: [],
+                    followUpRequired: false,
+                    keyEntities: { "order_id": "TK-99210", "delivery_time": "2:34 PM", "resolution": "Package found by customer" },
+                    summary: "Missing package inquiry quickly resolved. Customer found package in safe spot location."
+                },
+                evaluationResults: [
+                    { criteriaId: "crit-001", criteriaName: "Issue Resolution", passed: true, reasoning: "Customer's concern was addressed and package was located within the conversation." },
+                    { criteriaId: "crit-002", criteriaName: "Empathy & Tone", passed: true, reasoning: "Agent responded quickly and was gracious when customer found package." },
+                    { criteriaId: "crit-003", criteriaName: "Compliance Adherence", passed: true, reasoning: "Agent verified delivery details before suggesting customer search." }
+                ]
+            },
+            {
+                id: "conv-008",
+                date: "2026-01-19T11:30:00Z",
+                duration: "2:20",
+                messageCount: 12,
+                channel: "voice",
+                status: "successful",
+                transcript: [
+                    { role: "agent", content: "Good morning, TechStore support. How can I help you?", timestamp: "00:00" },
+                    { role: "customer", content: "Hi, I want to change my subscription from monthly to annual to get the discount.", timestamp: "00:08" },
+                    { role: "agent", content: "Great choice! The annual plan saves you 20%. I can make that switch for you. Can I verify your account email?", timestamp: "00:16" },
+                    { role: "customer", content: "mike.chen@email.com", timestamp: "00:28" },
+                    { role: "agent", content: "Thanks, Mike. I see you're currently on the monthly Pro plan at $29.99/month. The annual plan would be $287.90 for the year - that's a savings of $71.88.", timestamp: "00:40" },
+                    { role: "customer", content: "That sounds good. Will I lose any of my saved settings?", timestamp: "01:00" },
+                    { role: "agent", content: "Not at all! All your projects, settings, and data stay exactly as they are. The only change is your billing cycle.", timestamp: "01:10" },
+                    { role: "customer", content: "Perfect, let's do it.", timestamp: "01:22" },
+                    { role: "agent", content: "I've updated your subscription. Your next charge will be $287.90 on February 19th. You'll receive a confirmation email shortly. Is there anything else?", timestamp: "01:35" },
+                    { role: "customer", content: "Nope, that's all. Thanks!", timestamp: "01:50" }
+                ],
+                proseSummary: "Customer Mike Chen requested switch from monthly to annual Pro subscription. Agent explained 20% savings ($71.88 annually). Confirmed data and settings preserved during switch. Subscription updated successfully.",
+                structuredSummary: {
+                    outcome: "resolved",
+                    sentiment: { start: "neutral", end: "satisfied" },
+                    topics: ["subscription_change", "billing", "upgrade"],
+                    actionItems: [],
+                    followUpRequired: false,
+                    keyEntities: { "customer_email": "mike.chen@email.com", "old_plan": "Monthly Pro ($29.99/month)", "new_plan": "Annual Pro ($287.90/year)", "savings": "$71.88" },
+                    summary: "Monthly to annual subscription switch completed. Customer saves $71.88/year."
+                },
+                evaluationResults: [
+                    { criteriaId: "crit-001", criteriaName: "Issue Resolution", passed: true, reasoning: "Subscription change completed successfully. Customer received confirmation of savings and next billing date." },
+                    { criteriaId: "crit-002", criteriaName: "Empathy & Tone", passed: true, reasoning: "Agent was enthusiastic about customer's choice, proactively addressed potential concerns about data preservation." },
+                    { criteriaId: "crit-003", criteriaName: "Compliance Adherence", passed: true, reasoning: "Agent clearly stated new pricing, savings amount, and billing date before processing change." }
+                ]
+            }
+        ];
 
         // Utility Functions
-        const formatDuration = (seconds) => {
-            if (!seconds) return '--:--';
-            const mins = Math.floor(seconds / 60);
-            const secs = Math.floor(seconds % 60);
-            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        const formatDate = (dateStr) => {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
         };
 
-        const getTimeAgo = (unixSecs) => {
-            const now = Math.floor(Date.now() / 1000);
-            const diff = now - unixSecs;
+        const getTimeAgo = (dateStr) => {
+            const now = new Date();
+            const date = new Date(dateStr);
+            const diff = Math.floor((now - date) / 1000);
             if (diff < 60) return 'Just now';
             if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
             if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
             return `${Math.floor(diff / 86400)}d ago`;
-        };
-
-        const detectIntents = (transcript) => {
-            if (!transcript || !transcript.length) return ['General Inquiry'];
-            const text = transcript.map(t => t.message).join(' ').toLowerCase();
-            const intents = [];
-            if (text.includes('cancel')) intents.push('Cancellation');
-            if (text.includes('modify') || text.includes('change')) intents.push('Modification');
-            if (text.includes('book') || text.includes('reserve')) intents.push('New Booking');
-            if (text.includes('date') || text.includes('check-in') || text.includes('check-out')) intents.push('Date Change');
-            return intents.length ? intents : ['General Inquiry'];
-        };
-
-        const generateSummary = (conversation) => {
-            if (!conversation) return { overview: '', actions: [] };
-            const intents = detectIntents(conversation.transcript);
-            const status = conversation.status;
-            let overview = '';
-            const actions = [];
-
-            if (status === 'done') {
-                overview = `Conversation completed successfully. Customer inquiry related to ${intents.join(', ').toLowerCase()}.`;
-                if (intents.includes('New Booking')) actions.push('Booking request processed');
-                if (intents.includes('Modification')) actions.push('Modification request handled');
-                if (intents.includes('Cancellation')) actions.push('Cancellation request addressed');
-                if (intents.includes('Date Change')) actions.push('Date change discussed');
-                actions.push('Call ended normally');
-            } else if (status === 'processing') {
-                overview = 'Conversation is currently active.';
-            } else {
-                overview = 'Conversation ended with an error or was interrupted.';
-            }
-            return { overview, actions, intents };
-        };
-
-        // API Functions - No credentials needed, server handles auth via env vars
-        const fetchConversations = async () => {
-            const params = CONFIG.AGENT_ID ? `?agent_id=${CONFIG.AGENT_ID}` : '';
-            const response = await fetch(`${CONFIG.BASE_URL}/conversations${params}`);
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                if (response.status === 500) throw new Error(errorData.error || 'Server error. Check Vercel env vars.');
-                if (response.status === 401) throw new Error('Invalid API key configured on server.');
-                if (response.status === 404) throw new Error('Agent not found. Check ELEVENLABS_AGENT_ID.');
-                throw new Error(errorData.detail?.message || errorData.error || `API Error: ${response.status}`);
-            }
-            const data = await response.json();
-            return data.conversations || [];
-        };
-
-        const fetchConversationDetail = async (conversationId) => {
-            const response = await fetch(`${CONFIG.BASE_URL}/conversations/${conversationId}`);
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.detail?.message || errorData.error || `API Error: ${response.status}`);
-            }
-            return response.json();
         };
 
         // Icons
@@ -138,13 +366,17 @@
             Settings: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>,
             Refresh: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>,
             Search: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>,
-            Play: () => <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>,
             User: () => <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>,
             Bot: () => <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a2 2 0 012 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 017 7h1a1 1 0 011 1v3a1 1 0 01-1 1h-1v1a2 2 0 01-2 2H6a2 2 0 01-2-2v-1H3a1 1 0 01-1-1v-3a1 1 0 011-1h1a7 7 0 017-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 012-2M9 14a1 1 0 100 2 1 1 0 000-2m6 0a1 1 0 100 2 1 1 0 000-2"/></svg>,
+            Phone: () => <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>,
+            Message: () => <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>,
+            Check: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg>,
+            X: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>,
+            Flag: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"/></svg>,
         };
 
         // Components
-        const NavSidebar = ({ activeNav, setActiveNav, conversationFilter, setConversationFilter }) => {
+        const NavSidebar = ({ conversationFilter, setConversationFilter }) => {
             const menuItems = [
                 { id: 'all', label: 'All conversations' },
                 { id: 'resolved', label: 'Resolved' },
@@ -168,8 +400,8 @@
                     </div>
                     <div className="mt-auto px-2 flex flex-col gap-1">
                         {[{ id: 'analytics', icon: Icons.Chart, label: 'Analytics' }, { id: 'settings', icon: Icons.Settings, label: 'Settings' }].map(({ id, icon: Icon, label }) => (
-                            <button key={id} onClick={() => setActiveNav(id)}
-                                className={`px-3 py-2 rounded-lg text-left text-sm flex items-center gap-2 transition-colors ${activeNav === id ? 'bg-se-accent text-white' : 'text-se-muted hover:bg-se-hover hover:text-se-text'}`}>
+                            <button key={id}
+                                className="px-3 py-2 rounded-lg text-left text-sm flex items-center gap-2 transition-colors text-se-muted hover:bg-se-hover hover:text-se-text">
                                 <Icon /> {label}
                             </button>
                         ))}
@@ -178,59 +410,93 @@
             );
         };
 
-        const StatusBadge = ({ status }) => {
+        const OutcomeBadge = ({ outcome }) => {
             const styles = {
-                done: 'bg-se-success/20 text-se-success',
-                processing: 'bg-se-warning/20 text-se-warning',
-                error: 'bg-se-error/20 text-se-error'
+                resolved: 'bg-se-success/20 text-se-success',
+                handed_over: 'bg-se-warning/20 text-se-warning',
+                escalated: 'bg-se-error/20 text-se-error',
+                abandoned: 'bg-se-muted/20 text-se-muted'
             };
-            return <span className={`px-2 py-0.5 rounded text-xs font-medium ${styles[status] || styles.error}`}>{status}</span>;
+            const labels = {
+                resolved: 'Resolved',
+                handed_over: 'Handed Over',
+                escalated: 'Escalated',
+                abandoned: 'Abandoned'
+            };
+            return <span className={`px-2 py-0.5 rounded text-xs font-medium ${styles[outcome] || styles.abandoned}`}>{labels[outcome] || outcome}</span>;
         };
+
+        const SentimentIndicator = ({ sentiment }) => {
+            const colors = {
+                frustrated: 'text-se-error',
+                neutral: 'text-se-muted',
+                satisfied: 'text-se-success'
+            };
+            return (
+                <div className="flex items-center gap-1 text-xs">
+                    <span className={colors[sentiment.start]}>{sentiment.start}</span>
+                    <span className="text-se-muted">→</span>
+                    <span className={colors[sentiment.end]}>{sentiment.end}</span>
+                </div>
+            );
+        };
+
+        const ChannelIcon = ({ channel }) => (
+            channel === 'voice' ? <Icons.Phone /> : <Icons.Message />
+        );
 
         const ConversationCard = ({ conversation, isSelected, onClick }) => (
             <div onClick={onClick}
                 className={`p-3 rounded-lg cursor-pointer transition-all border ${isSelected ? 'bg-se-accent/10 border-se-accent' : 'bg-se-card border-transparent hover:bg-se-hover'}`}>
                 <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${conversation.status === 'done' ? 'bg-se-success' : conversation.status === 'processing' ? 'bg-se-warning animate-pulse' : 'bg-se-error'}`} />
-                        <span className="text-sm font-mono text-se-text truncate max-w-[140px]">{conversation.conversation_id.slice(0, 12)}...</span>
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center ${conversation.channel === 'voice' ? 'bg-se-blue/20 text-se-blue' : 'bg-se-accent/20 text-se-accent'}`}>
+                            <ChannelIcon channel={conversation.channel} />
+                        </div>
+                        <div>
+                            <span className="text-sm font-medium text-se-text block">{conversation.id}</span>
+                            <span className="text-xs text-se-muted">{getTimeAgo(conversation.date)}</span>
+                        </div>
                     </div>
-                    <span className="text-xs text-se-muted">{getTimeAgo(conversation.start_time_unix_secs)}</span>
+                    <OutcomeBadge outcome={conversation.structuredSummary.outcome} />
                 </div>
+                <p className="text-xs text-se-muted mb-2 line-clamp-2">{conversation.structuredSummary.summary}</p>
                 <div className="flex items-center justify-between">
-                    <span className="text-xs text-se-muted">{formatDuration(conversation.call_duration_secs)}</span>
-                    <StatusBadge status={conversation.status} />
+                    <span className="text-xs text-se-muted">{conversation.duration} · {conversation.messageCount} msgs</span>
+                    <SentimentIndicator sentiment={conversation.structuredSummary.sentiment} />
                 </div>
+                {conversation.structuredSummary.followUpRequired && (
+                    <div className="mt-2 flex items-center gap-1 text-xs text-se-warning">
+                        <Icons.Flag /> Follow-up needed
+                    </div>
+                )}
             </div>
         );
 
-        const ConversationList = ({ conversations, selectedId, onSelect, loading, error, onRefresh, onDisconnect, filter, search, setSearch }) => {
-            const filtered = conversations.filter(c => {
-                if (filter === 'resolved' && c.status !== 'done') return false;
-                if (filter === 'pending' && c.status !== 'processing') return false;
-                if (filter === 'escalated' && c.status !== 'error') return false;
-                if (search && !c.conversation_id.toLowerCase().includes(search.toLowerCase())) return false;
+        const ConversationList = ({ conversations, selectedId, onSelect, filter, search, setSearch }) => {
+            const filtered = useMemo(() => conversations.filter(c => {
+                const outcome = c.structuredSummary.outcome;
+                if (filter === 'resolved' && outcome !== 'resolved') return false;
+                if (filter === 'escalated' && !['escalated', 'handed_over'].includes(outcome)) return false;
+                if (filter === 'pending' && outcome !== 'abandoned') return false;
+                if (search && !c.id.toLowerCase().includes(search.toLowerCase()) &&
+                    !c.structuredSummary.summary.toLowerCase().includes(search.toLowerCase())) return false;
                 return true;
-            });
+            }), [conversations, filter, search]);
 
-            const stats = {
+            const stats = useMemo(() => ({
                 total: conversations.length,
-                resolved: conversations.filter(c => c.status === 'done').length,
-                pending: conversations.filter(c => c.status === 'processing').length,
-                escalated: conversations.filter(c => c.status === 'error').length
-            };
+                resolved: conversations.filter(c => c.structuredSummary.outcome === 'resolved').length,
+                escalated: conversations.filter(c => ['escalated', 'handed_over'].includes(c.structuredSummary.outcome)).length,
+                followUp: conversations.filter(c => c.structuredSummary.followUpRequired).length
+            }), [conversations]);
 
             return (
-                <div className="w-72 bg-se-darker border-r border-se-border flex flex-col h-full">
+                <div className="w-80 bg-se-darker border-r border-se-border flex flex-col h-full">
                     <div className="p-4 border-b border-se-border">
                         <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full bg-se-success animate-pulse" />
-                                <span className="text-sm font-medium">Live Conversations</span>
-                            </div>
-                            <button onClick={onRefresh} className="p-1.5 rounded hover:bg-se-hover transition-colors text-se-muted hover:text-se-text">
-                                <Icons.Refresh />
-                            </button>
+                            <span className="text-sm font-medium">Conversations</span>
+                            <span className="text-xs text-se-muted">{filtered.length} of {stats.total}</span>
                         </div>
                         <div className="relative">
                             <input type="text" placeholder="Search conversations..."
@@ -240,32 +506,20 @@
                         </div>
                     </div>
                     <div className="flex-1 overflow-y-auto p-3 space-y-2">
-                        {loading ? (
-                            <div className="flex items-center justify-center h-32">
-                                <div className="w-6 h-6 border-2 border-se-accent border-t-transparent rounded-full animate-spin" />
-                            </div>
-                        ) : error ? (
-                            <div className="text-center py-8 px-4">
-                                <p className="text-se-error text-sm mb-3">{error}</p>
-                                <div className="flex flex-col gap-2">
-                                    <button onClick={onRefresh} className="text-se-accent text-sm hover:underline">Retry</button>
-                                    {onDisconnect && <button onClick={onDisconnect} className="text-se-muted text-sm hover:text-se-text">Change Credentials</button>}
-                                </div>
-                            </div>
-                        ) : filtered.length === 0 ? (
+                        {filtered.length === 0 ? (
                             <div className="text-center py-8 text-se-muted text-sm">No conversations found</div>
                         ) : (
                             filtered.map(c => (
-                                <ConversationCard key={c.conversation_id} conversation={c}
-                                    isSelected={selectedId === c.conversation_id} onClick={() => onSelect(c.conversation_id)} />
+                                <ConversationCard key={c.id} conversation={c}
+                                    isSelected={selectedId === c.id} onClick={() => onSelect(c.id)} />
                             ))
                         )}
                     </div>
                     <div className="p-4 border-t border-se-border bg-se-card/50">
                         <div className="flex justify-between text-xs">
-                            <span className="text-se-muted">Total: <span className="text-se-text font-medium">{stats.total}</span></span>
                             <span className="text-se-muted">Resolved: <span className="text-se-success font-medium">{stats.resolved}</span></span>
-                            <span className="text-se-muted">Pending: <span className="text-se-warning font-medium">{stats.pending}</span></span>
+                            <span className="text-se-muted">Escalated: <span className="text-se-warning font-medium">{stats.escalated}</span></span>
+                            <span className="text-se-muted">Follow-up: <span className="text-se-error font-medium">{stats.followUp}</span></span>
                         </div>
                     </div>
                 </div>
@@ -281,93 +535,95 @@
                     </div>
                     <div className={`max-w-[70%] ${isAgent ? '' : 'text-right'}`}>
                         <div className={`px-4 py-2.5 rounded-2xl ${isAgent ? 'bg-se-card rounded-tl-sm' : 'bg-se-accent rounded-tr-sm'}`}>
-                            <p className="text-sm leading-relaxed">{entry.message}</p>
+                            <p className="text-sm leading-relaxed">{entry.content}</p>
                         </div>
-                        {entry.time_in_call_secs !== undefined && (
-                            <span className="text-xs text-se-muted mt-1 inline-block">{formatDuration(entry.time_in_call_secs)}</span>
-                        )}
+                        <span className="text-xs text-se-muted mt-1 inline-block">{entry.timestamp}</span>
                     </div>
                 </div>
             );
         };
 
+        const EvaluationCard = ({ result }) => (
+            <div className={`p-3 rounded-lg border ${result.passed ? 'bg-se-success/5 border-se-success/30' : 'bg-se-error/5 border-se-error/30'}`}>
+                <div className="flex items-center gap-2 mb-2">
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center ${result.passed ? 'bg-se-success/20 text-se-success' : 'bg-se-error/20 text-se-error'}`}>
+                        {result.passed ? <Icons.Check /> : <Icons.X />}
+                    </div>
+                    <span className="text-sm font-medium">{result.criteriaName}</span>
+                </div>
+                <p className="text-xs text-se-muted leading-relaxed">{result.reasoning}</p>
+            </div>
+        );
+
         const SummaryPanel = ({ conversation }) => {
-            const { overview, actions, intents } = generateSummary(conversation);
+            const { structuredSummary, evaluationResults, proseSummary } = conversation;
             return (
-                <div className="w-80 bg-se-darker border-l border-se-border p-4 overflow-y-auto">
-                    <h3 className="text-sm font-semibold mb-4 text-se-text">Conversation Summary</h3>
+                <div className="w-96 bg-se-darker border-l border-se-border p-4 overflow-y-auto">
+                    <h3 className="text-sm font-semibold mb-4 text-se-text">AI Summary</h3>
+
                     <div className="space-y-4">
                         <div>
-                            <h4 className="text-xs font-medium text-se-muted mb-2">Detected Intents</h4>
+                            <h4 className="text-xs font-medium text-se-muted mb-2">Summary</h4>
+                            <p className="text-sm text-se-text leading-relaxed">{proseSummary}</p>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <OutcomeBadge outcome={structuredSummary.outcome} />
+                            <SentimentIndicator sentiment={structuredSummary.sentiment} />
+                            {structuredSummary.followUpRequired && (
+                                <span className="px-2 py-0.5 rounded text-xs font-medium bg-se-warning/20 text-se-warning">Follow-up</span>
+                            )}
+                        </div>
+
+                        <div>
+                            <h4 className="text-xs font-medium text-se-muted mb-2">Topics</h4>
                             <div className="flex flex-wrap gap-1.5">
-                                {intents.map((intent, i) => (
-                                    <span key={i} className="px-2 py-1 bg-se-accent/20 text-se-accent text-xs rounded-full">{intent}</span>
+                                {structuredSummary.topics.map((topic, i) => (
+                                    <span key={i} className="px-2 py-1 bg-se-accent/20 text-se-accent text-xs rounded-full">{topic.replace('_', ' ')}</span>
                                 ))}
                             </div>
                         </div>
-                        <div>
-                            <h4 className="text-xs font-medium text-se-muted mb-2">Overview</h4>
-                            <p className="text-sm text-se-text leading-relaxed">{overview}</p>
-                        </div>
-                        {actions.length > 0 && (
+
+                        {structuredSummary.actionItems.length > 0 && (
                             <div>
-                                <h4 className="text-xs font-medium text-se-muted mb-2">Actions Taken</h4>
+                                <h4 className="text-xs font-medium text-se-muted mb-2">Action Items</h4>
                                 <ul className="space-y-1">
-                                    {actions.map((action, i) => (
-                                        <li key={i} className="flex items-center gap-2 text-sm text-se-text">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-se-success" />
-                                            {action}
+                                    {structuredSummary.actionItems.map((item, i) => (
+                                        <li key={i} className="flex items-start gap-2 text-sm text-se-text">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-se-warning mt-1.5 flex-shrink-0" />
+                                            {item}
                                         </li>
                                     ))}
                                 </ul>
                             </div>
                         )}
-                        <div className="pt-4 border-t border-se-border">
-                            <h4 className="text-xs font-medium text-se-muted mb-2">Metadata</h4>
-                            <dl className="space-y-2 text-xs">
-                                <div className="flex justify-between">
-                                    <dt className="text-se-muted">Conversation ID</dt>
-                                    <dd className="font-mono text-se-text">{conversation.conversation_id.slice(0, 16)}...</dd>
-                                </div>
-                                {conversation.termination_reason && (
-                                    <div className="flex justify-between">
-                                        <dt className="text-se-muted">End Reason</dt>
-                                        <dd className="text-se-text">{conversation.termination_reason}</dd>
+
+                        <div>
+                            <h4 className="text-xs font-medium text-se-muted mb-2">Key Information</h4>
+                            <dl className="space-y-1.5 text-xs">
+                                {Object.entries(structuredSummary.keyEntities).map(([key, value]) => (
+                                    <div key={key} className="flex justify-between">
+                                        <dt className="text-se-muted">{key.replace('_', ' ')}</dt>
+                                        <dd className="text-se-text font-medium">{value}</dd>
                                     </div>
-                                )}
-                                {conversation.cost_credits && (
-                                    <div className="flex justify-between">
-                                        <dt className="text-se-muted">Credits Used</dt>
-                                        <dd className="text-se-text">{conversation.cost_credits}</dd>
-                                    </div>
-                                )}
+                                ))}
                             </dl>
+                        </div>
+
+                        <div className="pt-4 border-t border-se-border">
+                            <h4 className="text-xs font-medium text-se-muted mb-3">Quality Evaluation</h4>
+                            <div className="space-y-2">
+                                {evaluationResults.map((result, i) => (
+                                    <EvaluationCard key={i} result={result} />
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </div>
             );
         };
 
-        const ConversationDetail = ({ conversation, loading, error }) => {
-            if (loading) {
-                return (
-                    <div className="flex-1 flex items-center justify-center bg-se-dark">
-                        <div className="w-8 h-8 border-2 border-se-accent border-t-transparent rounded-full animate-spin" />
-                    </div>
-                );
-            }
-
-            if (error) {
-                return (
-                    <div className="flex-1 flex items-center justify-center bg-se-dark">
-                        <div className="text-center">
-                            <p className="text-se-error mb-2">Failed to load conversation</p>
-                            <p className="text-se-muted text-sm">{error}</p>
-                        </div>
-                    </div>
-                );
-            }
-
+        const ConversationDetail = ({ conversation }) => {
             if (!conversation) {
                 return (
                     <div className="flex-1 flex items-center justify-center bg-se-dark">
@@ -383,31 +639,27 @@
 
             return (
                 <div className="flex-1 flex flex-col bg-se-dark">
-                    <div className="p-4 border-b border-se-border flex items-center justify-between">
-                        <div>
-                            <div className="flex items-center gap-3 mb-1">
-                                <h2 className="text-lg font-semibold">Conversation Detail</h2>
-                                <StatusBadge status={conversation.status} />
-                            </div>
-                            <div className="flex items-center gap-4 text-sm text-se-muted">
-                                <span>{new Date(conversation.start_time_unix_secs * 1000).toLocaleString()}</span>
-                                <span>{formatDuration(conversation.call_duration_secs)}</span>
+                    <div className="p-4 border-b border-se-border">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <div className="flex items-center gap-3 mb-1">
+                                    <h2 className="text-lg font-semibold">{conversation.id}</h2>
+                                    <OutcomeBadge outcome={conversation.structuredSummary.outcome} />
+                                    <div className={`px-2 py-0.5 rounded text-xs font-medium flex items-center gap-1 ${conversation.channel === 'voice' ? 'bg-se-blue/20 text-se-blue' : 'bg-se-accent/20 text-se-accent'}`}>
+                                        <ChannelIcon channel={conversation.channel} /> {conversation.channel}
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-4 text-sm text-se-muted">
+                                    <span>{formatDate(conversation.date)}</span>
+                                    <span>{conversation.duration}</span>
+                                    <span>{conversation.messageCount} messages</span>
+                                </div>
                             </div>
                         </div>
-                        {conversation.recording_url && (
-                            <a href={conversation.recording_url} target="_blank" rel="noopener noreferrer"
-                                className="flex items-center gap-2 px-4 py-2 bg-se-accent text-white rounded-lg hover:bg-se-accent/90 transition-colors">
-                                <Icons.Play /> Play Recording
-                            </a>
-                        )}
                     </div>
                     <div className="flex-1 flex overflow-hidden">
                         <div className="flex-1 p-4 overflow-y-auto space-y-4">
-                            {conversation.transcript && conversation.transcript.length > 0 ? (
-                                conversation.transcript.map((entry, i) => <TranscriptMessage key={i} entry={entry} />)
-                            ) : (
-                                <div className="text-center py-8 text-se-muted">No transcript available</div>
-                            )}
+                            {conversation.transcript.map((entry, i) => <TranscriptMessage key={i} entry={entry} />)}
                         </div>
                         <SummaryPanel conversation={conversation} />
                     </div>
@@ -417,76 +669,28 @@
 
         // Main App
         const App = () => {
-            const [activeNav, setActiveNav] = useState('conversations');
-            const [conversations, setConversations] = useState([]);
+            const [conversations] = useState(MOCK_CONVERSATIONS);
             const [selectedId, setSelectedId] = useState(null);
-            const [selectedConversation, setSelectedConversation] = useState(null);
-            const [listLoading, setListLoading] = useState(true);
-            const [listError, setListError] = useState(null);
-            const [detailLoading, setDetailLoading] = useState(false);
-            const [detailError, setDetailError] = useState(null);
             const [conversationFilter, setConversationFilter] = useState('all');
             const [search, setSearch] = useState('');
 
-            const loadConversations = useCallback(async () => {
-                setListLoading(true);
-                setListError(null);
-                try {
-                    const data = await fetchConversations();
-                    setConversations(data);
-                } catch (err) {
-                    setListError(err.message);
-                } finally {
-                    setListLoading(false);
-                }
-            }, []);
-
-            const loadConversationDetail = useCallback(async (id) => {
-                setDetailLoading(true);
-                setDetailError(null);
-                try {
-                    const data = await fetchConversationDetail(id);
-                    setSelectedConversation(data);
-                } catch (err) {
-                    setDetailError(err.message);
-                } finally {
-                    setDetailLoading(false);
-                }
-            }, []);
-
-            useEffect(() => {
-                loadConversations();
-                const interval = setInterval(loadConversations, 30000);
-                return () => clearInterval(interval);
-            }, [loadConversations]);
-
-            useEffect(() => {
-                if (selectedId) {
-                    loadConversationDetail(selectedId);
-                } else {
-                    setSelectedConversation(null);
-                }
-            }, [selectedId, loadConversationDetail]);
+            const selectedConversation = useMemo(() =>
+                conversations.find(c => c.id === selectedId),
+                [conversations, selectedId]
+            );
 
             return (
                 <div className="h-screen flex">
-                    <NavSidebar activeNav={activeNav} setActiveNav={setActiveNav} conversationFilter={conversationFilter} setConversationFilter={setConversationFilter} />
+                    <NavSidebar conversationFilter={conversationFilter} setConversationFilter={setConversationFilter} />
                     <ConversationList
                         conversations={conversations}
                         selectedId={selectedId}
                         onSelect={setSelectedId}
-                        loading={listLoading}
-                        error={listError}
-                        onRefresh={loadConversations}
                         filter={conversationFilter}
                         search={search}
                         setSearch={setSearch}
                     />
-                    <ConversationDetail
-                        conversation={selectedConversation}
-                        loading={detailLoading}
-                        error={detailError}
-                    />
+                    <ConversationDetail conversation={selectedConversation} />
                 </div>
             );
         };
