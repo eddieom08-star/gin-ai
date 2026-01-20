@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StayEasy - Voice Agent Dashboard</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'se-dark': '#0f1117',
+                        'se-darker': '#0a0c10',
+                        'se-card': '#1a1d24',
+                        'se-border': '#2a2d35',
+                        'se-hover': '#252830',
+                        'se-accent': '#10b981',
+                        'se-success': '#22c55e',
+                        'se-warning': '#f59e0b',
+                        'se-error': '#ef4444',
+                        'se-text': '#e5e7eb',
+                        'se-muted': '#9ca3af',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #1a1d24; }
+        ::-webkit-scrollbar-thumb { background: #2a2d35; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #3a3d45; }
+    </style>
+</head>
+<body class="bg-se-dark text-se-text">
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect, useCallback } = React;
+
+        // Configuration - Set your API key below or via URL parameter: ?apiKey=YOUR_KEY
+        const urlParams = new URLSearchParams(window.location.search);
+        const CONFIG = {
+            API_KEY: urlParams.get('apiKey') || 'YOUR_ELEVENLABS_API_KEY',
+            AGENT_ID: urlParams.get('agentId') || 'agent_0401kfef8r38f5fvascw528db3q5',
+            BASE_URL: 'https://api.elevenlabs.io/v1/convai'
+        };
+
+        // Utility Functions
+        const formatDuration = (seconds) => {
+            if (!seconds) return '--:--';
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        };
+
+        const getTimeAgo = (unixSecs) => {
+            const now = Math.floor(Date.now() / 1000);
+            const diff = now - unixSecs;
+            if (diff < 60) return 'Just now';
+            if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+            if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+            return `${Math.floor(diff / 86400)}d ago`;
+        };
+
+        const detectIntents = (transcript) => {
+            if (!transcript || !transcript.length) return ['General Inquiry'];
+            const text = transcript.map(t => t.message).join(' ').toLowerCase();
+            const intents = [];
+            if (text.includes('cancel')) intents.push('Cancellation');
+            if (text.includes('modify') || text.includes('change')) intents.push('Modification');
+            if (text.includes('book') || text.includes('reserve')) intents.push('New Booking');
+            if (text.includes('date') || text.includes('check-in') || text.includes('check-out')) intents.push('Date Change');
+            return intents.length ? intents : ['General Inquiry'];
+        };
+
+        const generateSummary = (conversation) => {
+            if (!conversation) return { overview: '', actions: [] };
+            const intents = detectIntents(conversation.transcript);
+            const status = conversation.status;
+            let overview = '';
+            const actions = [];
+
+            if (status === 'done') {
+                overview = `Conversation completed successfully. Customer inquiry related to ${intents.join(', ').toLowerCase()}.`;
+                if (intents.includes('New Booking')) actions.push('Booking request processed');
+                if (intents.includes('Modification')) actions.push('Modification request handled');
+                if (intents.includes('Cancellation')) actions.push('Cancellation request addressed');
+                if (intents.includes('Date Change')) actions.push('Date change discussed');
+                actions.push('Call ended normally');
+            } else if (status === 'processing') {
+                overview = 'Conversation is currently active.';
+            } else {
+                overview = 'Conversation ended with an error or was interrupted.';
+            }
+            return { overview, actions, intents };
+        };
+
+        // API Functions
+        const fetchConversations = async () => {
+            const response = await fetch(`${CONFIG.BASE_URL}/conversations?agent_id=${CONFIG.AGENT_ID}`, {
+                headers: { 'xi-api-key': CONFIG.API_KEY }
+            });
+            if (!response.ok) throw new Error(`API Error: ${response.status}`);
+            const data = await response.json();
+            return data.conversations || [];
+        };
+
+        const fetchConversationDetail = async (conversationId) => {
+            const response = await fetch(`${CONFIG.BASE_URL}/conversations/${conversationId}`, {
+                headers: { 'xi-api-key': CONFIG.API_KEY }
+            });
+            if (!response.ok) throw new Error(`API Error: ${response.status}`);
+            return response.json();
+        };
+
+        // Icons
+        const Icons = {
+            Logo: () => (
+                <svg className="w-8 h-8" viewBox="0 0 32 32" fill="none">
+                    <rect width="32" height="32" rx="8" fill="#10b981"/>
+                    <path d="M8 16L14 22L24 10" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+            ),
+            Chat: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>,
+            Chart: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>,
+            Settings: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>,
+            Refresh: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>,
+            Search: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>,
+            Play: () => <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>,
+            User: () => <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>,
+            Bot: () => <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a2 2 0 012 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 017 7h1a1 1 0 011 1v3a1 1 0 01-1 1h-1v1a2 2 0 01-2 2H6a2 2 0 01-2-2v-1H3a1 1 0 01-1-1v-3a1 1 0 011-1h1a7 7 0 017-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 012-2M9 14a1 1 0 100 2 1 1 0 000-2m6 0a1 1 0 100 2 1 1 0 000-2"/></svg>,
+        };
+
+        // Components
+        const NavSidebar = ({ activeNav, setActiveNav }) => (
+            <nav className="w-14 bg-se-darker border-r border-se-border flex flex-col items-center py-4">
+                <div className="mb-8"><Icons.Logo /></div>
+                <div className="flex flex-col gap-2">
+                    {[{ id: 'conversations', icon: Icons.Chat }, { id: 'analytics', icon: Icons.Chart }, { id: 'settings', icon: Icons.Settings }].map(({ id, icon: Icon }) => (
+                        <button key={id} onClick={() => setActiveNav(id)}
+                            className={`p-3 rounded-lg transition-colors ${activeNav === id ? 'bg-se-accent text-white' : 'text-se-muted hover:bg-se-hover hover:text-se-text'}`}>
+                            <Icon />
+                        </button>
+                    ))}
+                </div>
+            </nav>
+        );
+
+        const StatusBadge = ({ status }) => {
+            const styles = {
+                done: 'bg-se-success/20 text-se-success',
+                processing: 'bg-se-warning/20 text-se-warning',
+                error: 'bg-se-error/20 text-se-error'
+            };
+            return <span className={`px-2 py-0.5 rounded text-xs font-medium ${styles[status] || styles.error}`}>{status}</span>;
+        };
+
+        const ConversationCard = ({ conversation, isSelected, onClick }) => (
+            <div onClick={onClick}
+                className={`p-3 rounded-lg cursor-pointer transition-all border ${isSelected ? 'bg-se-accent/10 border-se-accent' : 'bg-se-card border-transparent hover:bg-se-hover'}`}>
+                <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${conversation.status === 'done' ? 'bg-se-success' : conversation.status === 'processing' ? 'bg-se-warning animate-pulse' : 'bg-se-error'}`} />
+                        <span className="text-sm font-mono text-se-text truncate max-w-[140px]">{conversation.conversation_id.slice(0, 12)}...</span>
+                    </div>
+                    <span className="text-xs text-se-muted">{getTimeAgo(conversation.start_time_unix_secs)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                    <span className="text-xs text-se-muted">{formatDuration(conversation.call_duration_secs)}</span>
+                    <StatusBadge status={conversation.status} />
+                </div>
+            </div>
+        );
+
+        const ConversationList = ({ conversations, selectedId, onSelect, loading, error, onRefresh, filter, setFilter, search, setSearch }) => {
+            const filtered = conversations.filter(c => {
+                if (filter === 'completed' && c.status !== 'done') return false;
+                if (filter === 'active' && c.status !== 'processing') return false;
+                if (search && !c.conversation_id.toLowerCase().includes(search.toLowerCase())) return false;
+                return true;
+            });
+
+            const stats = {
+                total: conversations.length,
+                completed: conversations.filter(c => c.status === 'done').length,
+                active: conversations.filter(c => c.status === 'processing').length
+            };
+
+            return (
+                <div className="w-72 bg-se-darker border-r border-se-border flex flex-col h-full">
+                    <div className="p-4 border-b border-se-border">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-se-success animate-pulse" />
+                                <span className="text-sm font-medium">Live Conversations</span>
+                            </div>
+                            <button onClick={onRefresh} className="p-1.5 rounded hover:bg-se-hover transition-colors text-se-muted hover:text-se-text">
+                                <Icons.Refresh />
+                            </button>
+                        </div>
+                        <div className="relative mb-3">
+                            <Icons.Search />
+                            <input type="text" placeholder="Search conversations..."
+                                value={search} onChange={e => setSearch(e.target.value)}
+                                className="w-full pl-9 pr-3 py-2 bg-se-card border border-se-border rounded-lg text-sm placeholder-se-muted focus:outline-none focus:border-se-accent" />
+                            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-se-muted"><Icons.Search /></div>
+                        </div>
+                        <div className="flex gap-1 bg-se-card rounded-lg p-1">
+                            {['all', 'completed', 'active'].map(f => (
+                                <button key={f} onClick={() => setFilter(f)}
+                                    className={`flex-1 px-3 py-1.5 rounded text-xs font-medium transition-colors ${filter === f ? 'bg-se-accent text-white' : 'text-se-muted hover:text-se-text'}`}>
+                                    {f.charAt(0).toUpperCase() + f.slice(1)}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                        {loading ? (
+                            <div className="flex items-center justify-center h-32">
+                                <div className="w-6 h-6 border-2 border-se-accent border-t-transparent rounded-full animate-spin" />
+                            </div>
+                        ) : error ? (
+                            <div className="text-center py-8">
+                                <p className="text-se-error text-sm mb-2">Failed to load</p>
+                                <button onClick={onRefresh} className="text-se-accent text-sm hover:underline">Retry</button>
+                            </div>
+                        ) : filtered.length === 0 ? (
+                            <div className="text-center py-8 text-se-muted text-sm">No conversations found</div>
+                        ) : (
+                            filtered.map(c => (
+                                <ConversationCard key={c.conversation_id} conversation={c}
+                                    isSelected={selectedId === c.conversation_id} onClick={() => onSelect(c.conversation_id)} />
+                            ))
+                        )}
+                    </div>
+                    <div className="p-4 border-t border-se-border bg-se-card/50">
+                        <div className="flex justify-between text-xs">
+                            <span className="text-se-muted">Total: <span className="text-se-text font-medium">{stats.total}</span></span>
+                            <span className="text-se-muted">Completed: <span className="text-se-success font-medium">{stats.completed}</span></span>
+                            <span className="text-se-muted">Active: <span className="text-se-warning font-medium">{stats.active}</span></span>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const TranscriptMessage = ({ entry }) => {
+            const isAgent = entry.role === 'agent';
+            return (
+                <div className={`flex gap-3 ${isAgent ? '' : 'flex-row-reverse'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${isAgent ? 'bg-se-accent' : 'bg-se-card'}`}>
+                        {isAgent ? <Icons.Bot /> : <Icons.User />}
+                    </div>
+                    <div className={`max-w-[70%] ${isAgent ? '' : 'text-right'}`}>
+                        <div className={`px-4 py-2.5 rounded-2xl ${isAgent ? 'bg-se-card rounded-tl-sm' : 'bg-se-accent rounded-tr-sm'}`}>
+                            <p className="text-sm leading-relaxed">{entry.message}</p>
+                        </div>
+                        {entry.time_in_call_secs !== undefined && (
+                            <span className="text-xs text-se-muted mt-1 inline-block">{formatDuration(entry.time_in_call_secs)}</span>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        const SummaryPanel = ({ conversation }) => {
+            const { overview, actions, intents } = generateSummary(conversation);
+            return (
+                <div className="w-80 bg-se-darker border-l border-se-border p-4 overflow-y-auto">
+                    <h3 className="text-sm font-semibold mb-4 text-se-text">Conversation Summary</h3>
+                    <div className="space-y-4">
+                        <div>
+                            <h4 className="text-xs font-medium text-se-muted mb-2">Detected Intents</h4>
+                            <div className="flex flex-wrap gap-1.5">
+                                {intents.map((intent, i) => (
+                                    <span key={i} className="px-2 py-1 bg-se-accent/20 text-se-accent text-xs rounded-full">{intent}</span>
+                                ))}
+                            </div>
+                        </div>
+                        <div>
+                            <h4 className="text-xs font-medium text-se-muted mb-2">Overview</h4>
+                            <p className="text-sm text-se-text leading-relaxed">{overview}</p>
+                        </div>
+                        {actions.length > 0 && (
+                            <div>
+                                <h4 className="text-xs font-medium text-se-muted mb-2">Actions Taken</h4>
+                                <ul className="space-y-1">
+                                    {actions.map((action, i) => (
+                                        <li key={i} className="flex items-center gap-2 text-sm text-se-text">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-se-success" />
+                                            {action}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+                        <div className="pt-4 border-t border-se-border">
+                            <h4 className="text-xs font-medium text-se-muted mb-2">Metadata</h4>
+                            <dl className="space-y-2 text-xs">
+                                <div className="flex justify-between">
+                                    <dt className="text-se-muted">Conversation ID</dt>
+                                    <dd className="font-mono text-se-text">{conversation.conversation_id.slice(0, 16)}...</dd>
+                                </div>
+                                {conversation.termination_reason && (
+                                    <div className="flex justify-between">
+                                        <dt className="text-se-muted">End Reason</dt>
+                                        <dd className="text-se-text">{conversation.termination_reason}</dd>
+                                    </div>
+                                )}
+                                {conversation.cost_credits && (
+                                    <div className="flex justify-between">
+                                        <dt className="text-se-muted">Credits Used</dt>
+                                        <dd className="text-se-text">{conversation.cost_credits}</dd>
+                                    </div>
+                                )}
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const ConversationDetail = ({ conversation, loading, error }) => {
+            if (loading) {
+                return (
+                    <div className="flex-1 flex items-center justify-center bg-se-dark">
+                        <div className="w-8 h-8 border-2 border-se-accent border-t-transparent rounded-full animate-spin" />
+                    </div>
+                );
+            }
+
+            if (error) {
+                return (
+                    <div className="flex-1 flex items-center justify-center bg-se-dark">
+                        <div className="text-center">
+                            <p className="text-se-error mb-2">Failed to load conversation</p>
+                            <p className="text-se-muted text-sm">{error}</p>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (!conversation) {
+                return (
+                    <div className="flex-1 flex items-center justify-center bg-se-dark">
+                        <div className="text-center">
+                            <div className="w-16 h-16 rounded-full bg-se-card flex items-center justify-center mx-auto mb-4">
+                                <Icons.Chat />
+                            </div>
+                            <p className="text-se-muted">Select a conversation to view details</p>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="flex-1 flex flex-col bg-se-dark">
+                    <div className="p-4 border-b border-se-border flex items-center justify-between">
+                        <div>
+                            <div className="flex items-center gap-3 mb-1">
+                                <h2 className="text-lg font-semibold">Conversation Detail</h2>
+                                <StatusBadge status={conversation.status} />
+                            </div>
+                            <div className="flex items-center gap-4 text-sm text-se-muted">
+                                <span>{new Date(conversation.start_time_unix_secs * 1000).toLocaleString()}</span>
+                                <span>{formatDuration(conversation.call_duration_secs)}</span>
+                            </div>
+                        </div>
+                        {conversation.recording_url && (
+                            <a href={conversation.recording_url} target="_blank" rel="noopener noreferrer"
+                                className="flex items-center gap-2 px-4 py-2 bg-se-accent text-white rounded-lg hover:bg-se-accent/90 transition-colors">
+                                <Icons.Play /> Play Recording
+                            </a>
+                        )}
+                    </div>
+                    <div className="flex-1 flex overflow-hidden">
+                        <div className="flex-1 p-4 overflow-y-auto space-y-4">
+                            {conversation.transcript && conversation.transcript.length > 0 ? (
+                                conversation.transcript.map((entry, i) => <TranscriptMessage key={i} entry={entry} />)
+                            ) : (
+                                <div className="text-center py-8 text-se-muted">No transcript available</div>
+                            )}
+                        </div>
+                        <SummaryPanel conversation={conversation} />
+                    </div>
+                </div>
+            );
+        };
+
+        // API Key Setup Component
+        const ApiKeySetup = ({ onSave }) => {
+            const [apiKey, setApiKey] = useState('');
+            const [agentId, setAgentId] = useState(CONFIG.AGENT_ID);
+            return (
+                <div className="h-screen flex items-center justify-center bg-se-dark">
+                    <div className="bg-se-card border border-se-border rounded-xl p-8 w-full max-w-md">
+                        <div className="flex items-center gap-3 mb-6">
+                            <Icons.Logo />
+                            <h1 className="text-xl font-bold">StayEasy Dashboard</h1>
+                        </div>
+                        <p className="text-se-muted text-sm mb-6">Enter your ElevenLabs API credentials to connect to the voice agent.</p>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium mb-2">API Key</label>
+                                <input type="password" value={apiKey} onChange={e => setApiKey(e.target.value)}
+                                    placeholder="sk_..." className="w-full px-4 py-2.5 bg-se-dark border border-se-border rounded-lg focus:outline-none focus:border-se-accent" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-2">Agent ID</label>
+                                <input type="text" value={agentId} onChange={e => setAgentId(e.target.value)}
+                                    placeholder="agent_..." className="w-full px-4 py-2.5 bg-se-dark border border-se-border rounded-lg focus:outline-none focus:border-se-accent" />
+                            </div>
+                            <button onClick={() => onSave(apiKey, agentId)} disabled={!apiKey}
+                                className="w-full py-2.5 bg-se-accent text-white rounded-lg font-medium hover:bg-se-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                Connect
+                            </button>
+                        </div>
+                        <p className="text-se-muted text-xs mt-4 text-center">Your credentials are stored locally in this session only.</p>
+                    </div>
+                </div>
+            );
+        };
+
+        // Main App
+        const App = () => {
+            const [apiKey, setApiKey] = useState(CONFIG.API_KEY !== 'YOUR_ELEVENLABS_API_KEY' ? CONFIG.API_KEY : '');
+            const [agentId, setAgentId] = useState(CONFIG.AGENT_ID);
+            const [activeNav, setActiveNav] = useState('conversations');
+            const [conversations, setConversations] = useState([]);
+            const [selectedId, setSelectedId] = useState(null);
+            const [selectedConversation, setSelectedConversation] = useState(null);
+            const [listLoading, setListLoading] = useState(false);
+            const [listError, setListError] = useState(null);
+            const [detailLoading, setDetailLoading] = useState(false);
+            const [detailError, setDetailError] = useState(null);
+            const [filter, setFilter] = useState('all');
+            const [search, setSearch] = useState('');
+
+            const handleApiKeySave = (key, agent) => {
+                setApiKey(key);
+                setAgentId(agent);
+                CONFIG.API_KEY = key;
+                CONFIG.AGENT_ID = agent;
+            };
+
+            if (!apiKey) {
+                return <ApiKeySetup onSave={handleApiKeySave} />;
+            }
+
+            const loadConversations = useCallback(async () => {
+                setListLoading(true);
+                setListError(null);
+                try {
+                    const data = await fetchConversations();
+                    setConversations(data);
+                } catch (err) {
+                    setListError(err.message);
+                } finally {
+                    setListLoading(false);
+                }
+            }, [apiKey]);
+
+            const loadConversationDetail = useCallback(async (id) => {
+                setDetailLoading(true);
+                setDetailError(null);
+                try {
+                    const data = await fetchConversationDetail(id);
+                    setSelectedConversation(data);
+                } catch (err) {
+                    setDetailError(err.message);
+                } finally {
+                    setDetailLoading(false);
+                }
+            }, []);
+
+            useEffect(() => {
+                loadConversations();
+                const interval = setInterval(loadConversations, 30000);
+                return () => clearInterval(interval);
+            }, [loadConversations]);
+
+            useEffect(() => {
+                if (selectedId) {
+                    loadConversationDetail(selectedId);
+                } else {
+                    setSelectedConversation(null);
+                }
+            }, [selectedId, loadConversationDetail]);
+
+            return (
+                <div className="h-screen flex">
+                    <NavSidebar activeNav={activeNav} setActiveNav={setActiveNav} />
+                    <ConversationList
+                        conversations={conversations}
+                        selectedId={selectedId}
+                        onSelect={setSelectedId}
+                        loading={listLoading}
+                        error={listError}
+                        onRefresh={loadConversations}
+                        filter={filter}
+                        setFilter={setFilter}
+                        search={search}
+                        setSearch={setSearch}
+                    />
+                    <ConversationDetail
+                        conversation={selectedConversation}
+                        loading={detailLoading}
+                        error={detailError}
+                    />
+                </div>
+            );
+        };
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+</html>
