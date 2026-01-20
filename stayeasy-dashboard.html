@@ -144,19 +144,39 @@
         };
 
         // Components
-        const NavSidebar = ({ activeNav, setActiveNav }) => (
-            <nav className="w-14 bg-se-darker border-r border-se-border flex flex-col items-center py-4">
-                <div className="mb-8"><Icons.Logo /></div>
-                <div className="flex flex-col gap-2">
-                    {[{ id: 'conversations', icon: Icons.Chat }, { id: 'analytics', icon: Icons.Chart }, { id: 'settings', icon: Icons.Settings }].map(({ id, icon: Icon }) => (
-                        <button key={id} onClick={() => setActiveNav(id)}
-                            className={`p-3 rounded-lg transition-colors ${activeNav === id ? 'bg-se-accent text-white' : 'text-se-muted hover:bg-se-hover hover:text-se-text'}`}>
-                            <Icon />
-                        </button>
-                    ))}
-                </div>
-            </nav>
-        );
+        const NavSidebar = ({ activeNav, setActiveNav, conversationFilter, setConversationFilter }) => {
+            const menuItems = [
+                { id: 'all', label: 'All conversations' },
+                { id: 'resolved', label: 'Resolved' },
+                { id: 'escalated', label: 'Escalated & Handoff' },
+                { id: 'pending', label: 'Pending' }
+            ];
+
+            return (
+                <nav className="w-52 bg-se-darker border-r border-se-border flex flex-col py-4">
+                    <div className="px-4 mb-6 flex items-center gap-2">
+                        <Icons.Logo />
+                        <span className="font-semibold text-se-text">gin-ai</span>
+                    </div>
+                    <div className="flex flex-col gap-1 px-2">
+                        {menuItems.map(({ id, label }) => (
+                            <button key={id} onClick={() => setConversationFilter(id)}
+                                className={`px-3 py-2 rounded-lg text-left text-sm transition-colors ${conversationFilter === id ? 'bg-se-accent text-white' : 'text-se-muted hover:bg-se-hover hover:text-se-text'}`}>
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="mt-auto px-2 flex flex-col gap-1">
+                        {[{ id: 'analytics', icon: Icons.Chart, label: 'Analytics' }, { id: 'settings', icon: Icons.Settings, label: 'Settings' }].map(({ id, icon: Icon, label }) => (
+                            <button key={id} onClick={() => setActiveNav(id)}
+                                className={`px-3 py-2 rounded-lg text-left text-sm flex items-center gap-2 transition-colors ${activeNav === id ? 'bg-se-accent text-white' : 'text-se-muted hover:bg-se-hover hover:text-se-text'}`}>
+                                <Icon /> {label}
+                            </button>
+                        ))}
+                    </div>
+                </nav>
+            );
+        };
 
         const StatusBadge = ({ status }) => {
             const styles = {
@@ -184,18 +204,20 @@
             </div>
         );
 
-        const ConversationList = ({ conversations, selectedId, onSelect, loading, error, onRefresh, onDisconnect, filter, setFilter, search, setSearch }) => {
+        const ConversationList = ({ conversations, selectedId, onSelect, loading, error, onRefresh, onDisconnect, filter, search, setSearch }) => {
             const filtered = conversations.filter(c => {
-                if (filter === 'completed' && c.status !== 'done') return false;
-                if (filter === 'active' && c.status !== 'processing') return false;
+                if (filter === 'resolved' && c.status !== 'done') return false;
+                if (filter === 'pending' && c.status !== 'processing') return false;
+                if (filter === 'escalated' && c.status !== 'error') return false;
                 if (search && !c.conversation_id.toLowerCase().includes(search.toLowerCase())) return false;
                 return true;
             });
 
             const stats = {
                 total: conversations.length,
-                completed: conversations.filter(c => c.status === 'done').length,
-                active: conversations.filter(c => c.status === 'processing').length
+                resolved: conversations.filter(c => c.status === 'done').length,
+                pending: conversations.filter(c => c.status === 'processing').length,
+                escalated: conversations.filter(c => c.status === 'error').length
             };
 
             return (
@@ -210,19 +232,11 @@
                                 <Icons.Refresh />
                             </button>
                         </div>
-                        <div className="relative mb-3">
+                        <div className="relative">
                             <input type="text" placeholder="Search conversations..."
                                 value={search} onChange={e => setSearch(e.target.value)}
                                 className="w-full pl-9 pr-3 py-2 bg-se-card border border-se-border rounded-lg text-sm placeholder-se-muted focus:outline-none focus:border-se-accent" />
                             <div className="absolute left-3 top-1/2 -translate-y-1/2 text-se-muted"><Icons.Search /></div>
-                        </div>
-                        <div className="flex gap-1 bg-se-card rounded-lg p-1">
-                            {['all', 'completed', 'active'].map(f => (
-                                <button key={f} onClick={() => setFilter(f)}
-                                    className={`flex-1 px-3 py-1.5 rounded text-xs font-medium transition-colors ${filter === f ? 'bg-se-accent text-white' : 'text-se-muted hover:text-se-text'}`}>
-                                    {f.charAt(0).toUpperCase() + f.slice(1)}
-                                </button>
-                            ))}
                         </div>
                     </div>
                     <div className="flex-1 overflow-y-auto p-3 space-y-2">
@@ -250,8 +264,8 @@
                     <div className="p-4 border-t border-se-border bg-se-card/50">
                         <div className="flex justify-between text-xs">
                             <span className="text-se-muted">Total: <span className="text-se-text font-medium">{stats.total}</span></span>
-                            <span className="text-se-muted">Completed: <span className="text-se-success font-medium">{stats.completed}</span></span>
-                            <span className="text-se-muted">Active: <span className="text-se-warning font-medium">{stats.active}</span></span>
+                            <span className="text-se-muted">Resolved: <span className="text-se-success font-medium">{stats.resolved}</span></span>
+                            <span className="text-se-muted">Pending: <span className="text-se-warning font-medium">{stats.pending}</span></span>
                         </div>
                     </div>
                 </div>
@@ -411,7 +425,7 @@
             const [listError, setListError] = useState(null);
             const [detailLoading, setDetailLoading] = useState(false);
             const [detailError, setDetailError] = useState(null);
-            const [filter, setFilter] = useState('all');
+            const [conversationFilter, setConversationFilter] = useState('all');
             const [search, setSearch] = useState('');
 
             const loadConversations = useCallback(async () => {
@@ -456,7 +470,7 @@
 
             return (
                 <div className="h-screen flex">
-                    <NavSidebar activeNav={activeNav} setActiveNav={setActiveNav} />
+                    <NavSidebar activeNav={activeNav} setActiveNav={setActiveNav} conversationFilter={conversationFilter} setConversationFilter={setConversationFilter} />
                     <ConversationList
                         conversations={conversations}
                         selectedId={selectedId}
@@ -464,8 +478,7 @@
                         loading={listLoading}
                         error={listError}
                         onRefresh={loadConversations}
-                        filter={filter}
-                        setFilter={setFilter}
+                        filter={conversationFilter}
                         search={search}
                         setSearch={setSearch}
                     />
