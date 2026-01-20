@@ -45,10 +45,11 @@
 
         // Configuration - Set your API key below or via URL parameter: ?apiKey=YOUR_KEY
         const urlParams = new URLSearchParams(window.location.search);
+        // Use /api proxy routes (works on Vercel and local proxy server)
         const CONFIG = {
             API_KEY: urlParams.get('apiKey') || 'YOUR_ELEVENLABS_API_KEY',
             AGENT_ID: urlParams.get('agentId') || 'agent_0401kfef8r38f5fvascw528db3q5',
-            BASE_URL: 'https://api.elevenlabs.io/v1/convai'
+            BASE_URL: '/api'
         };
 
         // Utility Functions
@@ -103,19 +104,30 @@
 
         // API Functions
         const fetchConversations = async () => {
-            const response = await fetch(`${CONFIG.BASE_URL}/conversations?agent_id=${CONFIG.AGENT_ID}`, {
+            const url = `${CONFIG.BASE_URL}/conversations?agent_id=${CONFIG.AGENT_ID}`;
+            const response = await fetch(url, {
                 headers: { 'xi-api-key': CONFIG.API_KEY }
             });
-            if (!response.ok) throw new Error(`API Error: ${response.status}`);
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                if (response.status === 401) throw new Error('Invalid API key. Please check your credentials.');
+                if (response.status === 404) throw new Error('Agent not found. Verify your Agent ID exists.');
+                if (response.status === 403) throw new Error('CORS blocked. Try a different proxy or run locally.');
+                throw new Error(errorData.detail?.message || errorData.error || `API Error: ${response.status}`);
+            }
             const data = await response.json();
             return data.conversations || [];
         };
 
         const fetchConversationDetail = async (conversationId) => {
-            const response = await fetch(`${CONFIG.BASE_URL}/conversations/${conversationId}`, {
+            const url = `${CONFIG.BASE_URL}/conversations/${conversationId}`;
+            const response = await fetch(url, {
                 headers: { 'xi-api-key': CONFIG.API_KEY }
             });
-            if (!response.ok) throw new Error(`API Error: ${response.status}`);
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.detail?.message || errorData.error || `API Error: ${response.status}`);
+            }
             return response.json();
         };
 
@@ -178,7 +190,7 @@
             </div>
         );
 
-        const ConversationList = ({ conversations, selectedId, onSelect, loading, error, onRefresh, filter, setFilter, search, setSearch }) => {
+        const ConversationList = ({ conversations, selectedId, onSelect, loading, error, onRefresh, onDisconnect, filter, setFilter, search, setSearch }) => {
             const filtered = conversations.filter(c => {
                 if (filter === 'completed' && c.status !== 'done') return false;
                 if (filter === 'active' && c.status !== 'processing') return false;
@@ -226,9 +238,12 @@
                                 <div className="w-6 h-6 border-2 border-se-accent border-t-transparent rounded-full animate-spin" />
                             </div>
                         ) : error ? (
-                            <div className="text-center py-8">
-                                <p className="text-se-error text-sm mb-2">Failed to load</p>
-                                <button onClick={onRefresh} className="text-se-accent text-sm hover:underline">Retry</button>
+                            <div className="text-center py-8 px-4">
+                                <p className="text-se-error text-sm mb-3">{error}</p>
+                                <div className="flex flex-col gap-2">
+                                    <button onClick={onRefresh} className="text-se-accent text-sm hover:underline">Retry</button>
+                                    {onDisconnect && <button onClick={onDisconnect} className="text-se-muted text-sm hover:text-se-text">Change Credentials</button>}
+                                </div>
                             </div>
                         ) : filtered.length === 0 ? (
                             <div className="text-center py-8 text-se-muted text-sm">No conversations found</div>
@@ -503,6 +518,7 @@
                         loading={listLoading}
                         error={listError}
                         onRefresh={loadConversations}
+                        onDisconnect={() => setApiKey('')}
                         filter={filter}
                         setFilter={setFilter}
                         search={search}
