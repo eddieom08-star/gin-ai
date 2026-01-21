@@ -460,6 +460,7 @@
         // Components
         const NavSidebar = ({ conversationFilter, setConversationFilter }) => {
             const [agentDropdownOpen, setAgentDropdownOpen] = useState(false);
+            const [conversationsDropdownOpen, setConversationsDropdownOpen] = useState(true);
 
             const buildItems = [
                 { id: 'agents', icon: Icons.Agents, label: 'Agents', hasDropdown: true },
@@ -467,8 +468,7 @@
                 { id: 'toolcalls', icon: Icons.Tool, label: 'Toolcalls' }
             ];
 
-            const conversationItems = [
-                { id: 'all', label: 'All conversations' },
+            const conversationSubItems = [
                 { id: 'resolved', label: 'Resolved' },
                 { id: 'escalated', label: 'Escalated & Handoff' },
                 { id: 'pending', label: 'Pending' }
@@ -519,12 +519,32 @@
                         <span className="text-xs font-medium text-se-muted uppercase tracking-wider">Conversations</span>
                     </div>
                     <div className="flex flex-col gap-1 px-2">
-                        {conversationItems.map(({ id, label }) => (
-                            <button key={id} onClick={() => setConversationFilter(id)}
-                                className={`px-3 py-2 rounded-lg text-left text-sm transition-colors ${conversationFilter === id ? 'bg-se-accent text-white' : 'text-se-muted hover:bg-se-hover hover:text-se-text'}`}>
-                                {label}
+                        {/* All Conversations with dropdown */}
+                        <div className="relative">
+                            <button
+                                onClick={() => {
+                                    setConversationFilter('all');
+                                    setConversationsDropdownOpen(!conversationsDropdownOpen);
+                                }}
+                                className={`w-full px-3 py-2 rounded-lg text-left text-sm flex items-center justify-between transition-colors ${conversationFilter === 'all' ? 'bg-se-accent text-white' : 'text-se-muted hover:bg-se-hover hover:text-se-text'}`}>
+                                <div className="flex items-center gap-2">
+                                    <Icons.Chat /> All conversations
+                                </div>
+                                <div className={`transition-transform ${conversationsDropdownOpen ? 'rotate-180' : ''}`}>
+                                    <Icons.ChevronDown />
+                                </div>
                             </button>
-                        ))}
+                            {conversationsDropdownOpen && (
+                                <div className="ml-6 mt-1 flex flex-col gap-1">
+                                    {conversationSubItems.map(({ id, label }) => (
+                                        <button key={id} onClick={() => setConversationFilter(id)}
+                                            className={`px-3 py-1.5 rounded text-left text-xs transition-colors ${conversationFilter === id ? 'text-se-accent font-medium' : 'text-se-muted hover:bg-se-hover hover:text-se-text'}`}>
+                                            {label}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     <div className="mt-auto px-2 flex flex-col gap-1">
