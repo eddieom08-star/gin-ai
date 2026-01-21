@@ -662,7 +662,7 @@
                             <ChannelIcon channel={conversation.channel} />
                         </div>
                         <div className="min-w-0 flex-1">
-                            <span className="text-sm font-medium text-se-text block truncate">{conversation.structuredSummary.keyEntities.property || conversation.id}</span>
+                            <span className="text-sm font-medium text-se-text block truncate">{conversation.id}</span>
                             <span className="text-xs text-se-muted">{getTimeAgo(conversation.date)}</span>
                         </div>
                     </div>
@@ -1175,11 +1175,7 @@
             };
 
             const getConversationTitle = (c) => {
-                const property = c.structuredSummary?.keyEntities?.property;
-                if (property) return property;
-                const topics = c.structuredSummary?.topics || [];
-                if (topics.length > 0) return topics[0].replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                return 'Conversation';
+                return c.id || 'Conversation';
             };
 
             return (
