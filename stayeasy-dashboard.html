@@ -473,7 +473,7 @@
             const buildItems = [
                 { id: 'agents', icon: Icons.Agents, label: 'Agents', hasDropdown: true },
                 { id: 'knowledge', icon: Icons.Knowledge, label: 'Knowledge Base' },
-                { id: 'toolcalls', icon: Icons.Tool, label: 'Toolcalls' }
+                { id: 'tools', icon: Icons.Tool, label: 'Tools' }
             ];
 
             const conversationSubItems = [
@@ -781,7 +781,7 @@
             </div>
         );
 
-        const SummaryPanel = ({ conversation, evaluationCriteria }) => {
+        const SummaryPanel = ({ conversation, evaluationCriteria, isCollapsed, onToggleCollapse }) => {
             const { structuredSummary, evaluationResults, proseSummary } = conversation;
 
             // Generate evaluation results based on criteria (simulated for now)
@@ -799,9 +799,33 @@
                 };
             }) : evaluationResults;
 
+            if (isCollapsed) {
+                return (
+                    <div className="w-12 bg-se-darker border-l border-se-border flex flex-col items-center py-4 transition-all duration-200">
+                        <button
+                            onClick={onToggleCollapse}
+                            className="p-2 rounded-lg text-se-muted hover:bg-se-hover hover:text-se-text"
+                            title="Expand AI Summary">
+                            <Icons.ChevronLeft />
+                        </button>
+                        <div className="mt-4 writing-mode-vertical text-xs text-se-muted font-medium" style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}>
+                            AI Summary
+                        </div>
+                    </div>
+                );
+            }
+
             return (
-                <div className="w-96 bg-se-darker border-l border-se-border p-4 overflow-y-auto">
-                    <h3 className="text-sm font-semibold mb-4 text-se-text">AI Summary</h3>
+                <div className="w-96 bg-se-darker border-l border-se-border p-4 overflow-y-auto transition-all duration-200">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-sm font-semibold text-se-text">AI Summary</h3>
+                        <button
+                            onClick={onToggleCollapse}
+                            className="p-1 rounded text-se-muted hover:bg-se-hover hover:text-se-text"
+                            title="Collapse AI Summary">
+                            <Icons.ChevronRight />
+                        </button>
+                    </div>
 
                     <div className="space-y-4">
                         <div>
@@ -871,6 +895,8 @@
         };
 
         const ConversationDetail = ({ conversation, evaluationCriteria }) => {
+            const [summaryCollapsed, setSummaryCollapsed] = useState(false);
+
             if (!conversation) {
                 return (
                     <div className="flex-1 flex items-center justify-center bg-se-dark">
@@ -912,7 +938,12 @@
                         <div className="flex-1 p-4 overflow-y-auto space-y-4">
                             {conversation.transcript.map((entry, i) => <TranscriptMessage key={i} entry={entry} />)}
                         </div>
-                        <SummaryPanel conversation={conversation} evaluationCriteria={evaluationCriteria} />
+                        <SummaryPanel
+                            conversation={conversation}
+                            evaluationCriteria={evaluationCriteria}
+                            isCollapsed={summaryCollapsed}
+                            onToggleCollapse={() => setSummaryCollapsed(!summaryCollapsed)}
+                        />
                     </div>
                 </div>
             );
@@ -1127,20 +1158,44 @@
         };
 
         // Evaluation Criteria Panel Component
-        const EvaluationCriteriaPanel = ({ criteria, onAdd, onEdit }) => {
+        const EvaluationCriteriaPanel = ({ criteria, onAdd, onEdit, isCollapsed, onToggleCollapse }) => {
             const getIcon = (iconName) => {
                 const iconMap = { Check: Icons.Check, Clock: Icons.Clock, TrendingUp: Icons.TrendingUp };
                 const Icon = iconMap[iconName] || Icons.Clipboard;
                 return <Icon />;
             };
 
+            if (isCollapsed) {
+                return (
+                    <div className="w-12 bg-se-darker border-l border-se-border flex flex-col items-center py-4 transition-all duration-200">
+                        <button
+                            onClick={onToggleCollapse}
+                            className="p-2 rounded-lg text-se-muted hover:bg-se-hover hover:text-se-text"
+                            title="Expand Criteria">
+                            <Icons.ChevronLeft />
+                        </button>
+                        <div className="mt-4 writing-mode-vertical text-xs text-se-muted font-medium" style={{ writingMode: 'vertical-rl', textOrientation: 'mixed' }}>
+                            Criteria
+                        </div>
+                    </div>
+                );
+            }
+
             return (
-                <div className="w-80 bg-se-darker border-l border-se-border p-4 overflow-y-auto">
+                <div className="w-80 bg-se-darker border-l border-se-border p-4 overflow-y-auto transition-all duration-200">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-sm font-semibold text-se-text">Evaluation Criteria</h3>
-                        <button onClick={onAdd} className="p-1.5 rounded bg-se-accent/20 text-se-accent hover:bg-se-accent/30 transition-colors">
-                            <Icons.Plus />
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <button onClick={onAdd} className="p-1.5 rounded bg-se-accent/20 text-se-accent hover:bg-se-accent/30 transition-colors">
+                                <Icons.Plus />
+                            </button>
+                            <button
+                                onClick={onToggleCollapse}
+                                className="p-1 rounded text-se-muted hover:bg-se-hover hover:text-se-text"
+                                title="Collapse Criteria">
+                                <Icons.ChevronRight />
+                            </button>
+                        </div>
                     </div>
                     <div className="space-y-3">
                         {criteria.map((c) => (
@@ -1274,6 +1329,7 @@
 
             // Sidebar State
             const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+            const [criteriaPanelCollapsed, setCriteriaPanelCollapsed] = useState(false);
 
             // Evaluation Criteria State
             const [evaluationCriteria, setEvaluationCriteria] = useState(DEFAULT_CRITERIA);
@@ -1399,6 +1455,8 @@
                                 criteria={evaluationCriteria}
                                 onAdd={openCreateDrawer}
                                 onEdit={openEditDrawer}
+                                isCollapsed={criteriaPanelCollapsed}
+                                onToggleCollapse={() => setCriteriaPanelCollapsed(!criteriaPanelCollapsed)}
                             />
                         </>
                     ) : (
