@@ -981,7 +981,7 @@
                         {isAgent && (
                             <button
                                 onClick={() => onAgentEventClick && onAgentEventClick(entry)}
-                                className="mb-1 px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded text-xs text-gray-600 flex items-center gap-1.5 transition-colors">
+                                className="mb-1 px-2.5 py-1.5 bg-se-card hover:bg-se-hover border border-se-border rounded text-xs text-se-muted hover:text-se-text flex items-center gap-1.5 transition-colors">
                                 <Icons.Zap />
                                 <span className="font-medium">Agent Invocation</span>
                             </button>
@@ -1089,6 +1089,13 @@
                     : `Criteria "${criteria.name}" not fully satisfied. Outcome: ${outcome}. Topics: ${topics.slice(0, 2).join(', ')}.`
             };
         };
+
+        // Default Evaluation Criteria - must be defined before SummaryPanel
+        const DEFAULT_CRITERIA = [
+            { id: 'issue_resolved', name: 'Issue Resolved', description: "Evaluate whether the customer's original issue was fully resolved.", instructions: 'Mark as successful if the agent provided a complete solution or answer, or appropriately escalated to a human agent.', passRate: 84, icon: 'Check' },
+            { id: 'efficient_handling', name: 'Efficient Handling', description: 'Assess if the agent handled the conversation efficiently.', instructions: 'Evaluate based on response time, number of unnecessary messages, and directness of communication.', passRate: 91, icon: 'Clock' },
+            { id: 'positive_outcome', name: 'Positive Outcome', description: 'Determine if the customer left with a positive impression.', instructions: 'Consider customer sentiment, explicit feedback, and whether they thanked the agent or expressed satisfaction.', passRate: 78, icon: 'TrendingUp' },
+        ];
 
         const SummaryPanel = ({ conversation, evaluationCriteria, isCollapsed, onToggleCollapse }) => {
             const { structuredSummary, evaluationResults, proseSummary } = conversation;
@@ -1483,13 +1490,6 @@
             if (details.conversation_id) entities.conversation_id = details.conversation_id;
             return Object.keys(entities).length > 0 ? entities : { conversation_id: details.conversation_id };
         };
-
-        // Default Evaluation Criteria
-        const DEFAULT_CRITERIA = [
-            { id: 'issue_resolved', name: 'Issue Resolved', description: "Evaluate whether the customer's original issue was fully resolved.", instructions: 'Mark as successful if the agent provided a complete solution or answer, or appropriately escalated to a human agent.', passRate: 84, icon: 'Check' },
-            { id: 'efficient_handling', name: 'Efficient Handling', description: 'Assess if the agent handled the conversation efficiently.', instructions: 'Evaluate based on response time, number of unnecessary messages, and directness of communication.', passRate: 91, icon: 'Clock' },
-            { id: 'positive_outcome', name: 'Positive Outcome', description: 'Determine if the customer left with a positive impression.', instructions: 'Consider customer sentiment, explicit feedback, and whether they thanked the agent or expressed satisfaction.', passRate: 78, icon: 'TrendingUp' },
-        ];
 
         // Evaluate Table View Component
         const EvaluateTableView = ({ conversations, selectedId, onSelect, search, setSearch }) => {
