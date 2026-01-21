@@ -464,6 +464,9 @@
             ChevronLeft: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"/></svg>,
             ChevronRight: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"/></svg>,
             Skills: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>,
+            Link: () => <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>,
+            Copy: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>,
+            Zap: () => <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>,
         };
 
         // Components
@@ -681,7 +684,53 @@
             </div>
         );
 
-        const ConversationList = ({ conversations, selectedId, onSelect, filter, search, setSearch, loading, error, onRefresh, useMockData, onToggleDataSource }) => {
+        // Active Call Card - shows in-progress calls with live indicator
+        const ActiveCallCard = ({ call, isSelected, onClick }) => {
+            const [elapsedTime, setElapsedTime] = useState('0:00');
+
+            useEffect(() => {
+                const startTime = new Date(call.startTime || Date.now());
+                const updateTimer = () => {
+                    const elapsed = Math.floor((Date.now() - startTime.getTime()) / 1000);
+                    const mins = Math.floor(elapsed / 60);
+                    const secs = elapsed % 60;
+                    setElapsedTime(`${mins}:${secs.toString().padStart(2, '0')}`);
+                };
+                updateTimer();
+                const interval = setInterval(updateTimer, 1000);
+                return () => clearInterval(interval);
+            }, [call.startTime]);
+
+            return (
+                <div onClick={onClick}
+                    className={`p-3 rounded-lg cursor-pointer transition-all border relative overflow-hidden ${isSelected ? 'bg-se-accent/10 border-se-accent' : 'bg-se-card border-se-success/50 hover:bg-se-hover'}`}>
+                    {/* Pulsing live indicator */}
+                    <div className="absolute top-3 right-3 flex items-center gap-1.5">
+                        <span className="relative flex h-2.5 w-2.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-se-success opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-se-success"></span>
+                        </span>
+                        <span className="text-xs font-semibold text-se-success uppercase tracking-wider">Live</span>
+                    </div>
+                    <div className="flex items-start gap-2 mb-2">
+                        <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 bg-se-success/20 text-se-success">
+                            <Icons.Phone />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <span className="text-sm font-medium text-se-text block truncate">{call.id || 'Active Call'}</span>
+                            <span className="text-xs text-se-success font-medium">In Progress</span>
+                        </div>
+                    </div>
+                    <p className="text-xs text-se-muted mb-2">Call with voice agent in progress...</p>
+                    <div className="flex items-center justify-between">
+                        <span className="text-xs text-se-success font-medium">{elapsedTime} elapsed</span>
+                        <span className="text-xs text-se-muted">{call.messageCount || 0} msgs</span>
+                    </div>
+                </div>
+            );
+        };
+
+        const ConversationList = ({ conversations, selectedId, onSelect, filter, search, setSearch, loading, error, onRefresh, useMockData, onToggleDataSource, activeCall, onSelectActiveCall }) => {
             const filtered = useMemo(() => conversations.filter(c => {
                 const outcome = c.structuredSummary.outcome;
                 if (filter === 'resolved' && outcome !== 'resolved') return false;
@@ -729,22 +778,42 @@
                         </div>
                     </div>
                     <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                        {/* Active Call Section */}
+                        {activeCall && (
+                            <div className="mb-3">
+                                <div className="text-xs text-se-muted uppercase tracking-wider mb-2 px-1">Active Call</div>
+                                <ActiveCallCard
+                                    call={activeCall}
+                                    isSelected={selectedId === activeCall.id}
+                                    onClick={() => onSelectActiveCall && onSelectActiveCall(activeCall)}
+                                />
+                            </div>
+                        )}
+                        {/* Completed Conversations */}
                         {loading ? (
                             <div className="text-center py-8">
                                 <div className="w-8 h-8 border-2 border-se-accent border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
                                 <span className="text-se-muted text-sm">Loading conversations...</span>
                             </div>
-                        ) : filtered.length === 0 ? (
+                        ) : filtered.length === 0 && !activeCall ? (
                             <div className="text-center py-8 text-se-muted text-sm">No conversations found</div>
                         ) : (
-                            filtered.map(c => (
-                                <ConversationCard key={c.id} conversation={c}
-                                    isSelected={selectedId === c.id} onClick={() => onSelect(c.id)} />
-                            ))
+                            <>
+                                {activeCall && filtered.length > 0 && (
+                                    <div className="text-xs text-se-muted uppercase tracking-wider mb-2 px-1 pt-2 border-t border-se-border">Recent</div>
+                                )}
+                                {filtered.map(c => (
+                                    <ConversationCard key={c.id} conversation={c}
+                                        isSelected={selectedId === c.id} onClick={() => onSelect(c.id)} />
+                                ))}
+                            </>
                         )}
                     </div>
                     <div className="p-4 border-t border-se-border bg-se-card/50">
                         <div className="flex justify-between text-xs">
+                            {activeCall && (
+                                <span className="text-se-muted">Active: <span className="text-se-success font-medium">1</span></span>
+                            )}
                             <span className="text-se-muted">Resolved: <span className="text-se-success font-medium">{stats.resolved}</span></span>
                             <span className="text-se-muted">Escalated: <span className="text-se-warning font-medium">{stats.escalated}</span></span>
                             <span className="text-se-muted">Follow-up: <span className="text-se-error font-medium">{stats.followUp}</span></span>
@@ -754,7 +823,153 @@
             );
         };
 
-        const TranscriptMessage = ({ entry }) => {
+        // Agent Event Drawer - slides in from right when clicking on Agent Event strip
+        const AgentEventDrawer = ({ isOpen, onClose, eventData }) => {
+            const [copiedField, setCopiedField] = useState(null);
+            const [expandedSections, setExpandedSections] = useState({});
+
+            if (!isOpen) return null;
+
+            const copyToClipboard = (text, field) => {
+                navigator.clipboard.writeText(text);
+                setCopiedField(field);
+                setTimeout(() => setCopiedField(null), 2000);
+            };
+
+            const toggleSection = (section) => {
+                setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
+            };
+
+            // Mock system prompt sections
+            const systemPromptSections = [
+                { id: 'role', title: 'Your Role', content: eventData?.systemPrompt?.role || 'You are a helpful customer service agent for StayEasy, a hotel booking platform. Your primary goal is to assist customers with their booking inquiries, modifications, and issues.' },
+                { id: 'persona', title: 'Your Persona', content: eventData?.systemPrompt?.persona || 'Be friendly, professional, and empathetic. Use a warm tone while maintaining efficiency. Always acknowledge customer concerns before providing solutions.' },
+                { id: 'strategy', title: 'Conversation Strategy', content: eventData?.systemPrompt?.strategy || '1. Greet the customer warmly\n2. Listen and understand their request\n3. Verify booking details when needed\n4. Provide clear solutions or escalate appropriately\n5. Confirm satisfaction before ending' },
+                { id: 'format', title: 'Your Response Format', content: eventData?.systemPrompt?.format || 'Keep responses concise but complete. Use natural conversational language. Confirm important details by repeating them back to the customer.' }
+            ];
+
+            return (
+                <>
+                    {/* Backdrop */}
+                    <div
+                        className="fixed inset-0 bg-black/50 z-40"
+                        onClick={onClose}
+                    />
+                    {/* Drawer */}
+                    <div className="fixed right-0 top-0 h-full w-[480px] bg-white z-50 shadow-2xl overflow-hidden flex flex-col"
+                        style={{ animation: 'slideInRight 0.2s ease-out' }}>
+                        {/* Header */}
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                            <div className="flex items-center gap-3">
+                                <h2 className="text-lg font-semibold text-gray-900">Agent Invocation Event</h2>
+                                <button
+                                    onClick={() => copyToClipboard(eventData?.eventId || '', 'header')}
+                                    className="text-gray-400 hover:text-gray-600">
+                                    <Icons.Link />
+                                </button>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button className="px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-1.5">
+                                    <Icons.Plus /> Rating
+                                </button>
+                                <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded">
+                                    <Icons.X />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Event Metadata */}
+                        <div className="px-6 py-4 border-b border-gray-200">
+                            <div className="grid grid-cols-4 gap-4">
+                                <div>
+                                    <div className="text-xs text-gray-500 mb-1">Event ID</div>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-sm font-medium text-gray-900">{eventData?.eventId?.slice(0, 5) || '7b16b'}</span>
+                                        <button
+                                            onClick={() => copyToClipboard(eventData?.eventId || '7b16b...', 'eventId')}
+                                            className="text-gray-400 hover:text-gray-600">
+                                            <Icons.Copy />
+                                        </button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div className="text-xs text-gray-500 mb-1">Action</div>
+                                    <span className="text-sm text-gray-900">{eventData?.action || 'message_to_...'}</span>
+                                </div>
+                                <div>
+                                    <div className="text-xs text-gray-500 mb-1">Latency</div>
+                                    <span className="text-sm text-gray-900">{eventData?.latency || '0.4s'}</span>
+                                </div>
+                                <div>
+                                    <div className="text-xs text-gray-500 mb-1">Event Tokens</div>
+                                    <span className="text-sm text-gray-900">{eventData?.tokens || '432'}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 overflow-y-auto">
+                            {/* Tabs */}
+                            <div className="px-6 pt-4 border-b border-gray-200">
+                                <div className="flex gap-6">
+                                    <button className="pb-3 text-sm font-medium text-gray-900 border-b-2 border-gray-900">Details</button>
+                                    <button className="pb-3 text-sm font-medium text-gray-500 hover:text-gray-700">Raw Event</button>
+                                </div>
+                            </div>
+
+                            <div className="p-6 space-y-6">
+                                {/* Message to User */}
+                                <div>
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h3 className="text-sm font-semibold text-gray-900">Message to User</h3>
+                                        <button
+                                            onClick={() => copyToClipboard(eventData?.message || '', 'message')}
+                                            className="text-gray-400 hover:text-gray-600">
+                                            <Icons.Copy />
+                                        </button>
+                                    </div>
+                                    <div className="bg-gray-50 rounded-lg p-4 flex items-start gap-3">
+                                        <p className="text-sm text-gray-700 flex-1">{eventData?.message || 'Hello! How can I assist you today?'}</p>
+                                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex-shrink-0" />
+                                    </div>
+                                </div>
+
+                                {/* System Prompt */}
+                                <div>
+                                    <h3 className="text-sm font-semibold text-gray-900 mb-3">System Prompt</h3>
+                                    <div className="space-y-1">
+                                        {systemPromptSections.map(section => (
+                                            <div key={section.id} className="border border-gray-200 rounded-lg overflow-hidden">
+                                                <button
+                                                    onClick={() => toggleSection(section.id)}
+                                                    className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={`transition-transform ${expandedSections[section.id] ? 'rotate-90' : ''}`}>
+                                                            <Icons.ChevronRight />
+                                                        </span>
+                                                        <span className="text-sm font-medium text-gray-700">{section.title}</span>
+                                                    </div>
+                                                </button>
+                                                {expandedSections[section.id] && (
+                                                    <div className="px-4 pb-4 pt-0">
+                                                        <div className="pl-6 text-sm text-gray-600 whitespace-pre-wrap">
+                                                            {section.content}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <style>{'@keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }'}</style>
+                </>
+            );
+        };
+
+        const TranscriptMessage = ({ entry, onAgentEventClick }) => {
             const isAgent = entry.role === 'agent';
             return (
                 <div className={`flex gap-3 ${isAgent ? '' : 'flex-row-reverse'}`}>
@@ -762,6 +977,15 @@
                         {isAgent ? <Icons.Bot /> : <Icons.User />}
                     </div>
                     <div className={`max-w-[70%] ${isAgent ? '' : 'text-right'}`}>
+                        {/* Agent Event Strip - only for agent messages */}
+                        {isAgent && (
+                            <button
+                                onClick={() => onAgentEventClick && onAgentEventClick(entry)}
+                                className="mb-1 px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded text-xs text-gray-600 flex items-center gap-1.5 transition-colors">
+                                <Icons.Zap />
+                                <span className="font-medium">Agent Invocation</span>
+                            </button>
+                        )}
                         <div className={`px-4 py-2.5 rounded-2xl ${isAgent ? 'bg-se-card rounded-tl-sm' : 'bg-se-accent rounded-tr-sm'}`}>
                             <p className="text-sm leading-relaxed">{entry.content}</p>
                         </div>
@@ -870,9 +1094,11 @@
             const { structuredSummary, evaluationResults, proseSummary } = conversation;
 
             // Generate evaluation results based on criteria using AI analysis
-            const criteriaBasedResults = evaluationCriteria ? evaluationCriteria.map(c => {
+            // Use custom criteria if provided, otherwise use DEFAULT_CRITERIA for live conversations
+            const criteriaToUse = evaluationCriteria || DEFAULT_CRITERIA;
+            const criteriaBasedResults = criteriaToUse.map(c => {
                 // Check if we have an existing result for this criteria
-                const existing = evaluationResults.find(r => r.criteriaId === c.id || r.criteriaName === c.name);
+                const existing = (evaluationResults || []).find(r => r.criteriaId === c.id || r.criteriaName === c.name);
                 if (existing) return existing;
                 // Evaluate conversation against this criteria
                 const evaluation = evaluateConversation(conversation, c);
@@ -882,7 +1108,7 @@
                     passed: evaluation.passed,
                     reasoning: evaluation.reasoning
                 };
-            }) : evaluationResults;
+            });
 
             if (isCollapsed) {
                 return (
@@ -979,8 +1205,102 @@
             );
         };
 
-        const ConversationDetail = ({ conversation, evaluationCriteria }) => {
+        const ConversationDetail = ({ conversation, evaluationCriteria, activeCall }) => {
             const [summaryCollapsed, setSummaryCollapsed] = useState(false);
+            const [callElapsed, setCallElapsed] = useState('0:00');
+            const [agentEventDrawerOpen, setAgentEventDrawerOpen] = useState(false);
+            const [selectedAgentEvent, setSelectedAgentEvent] = useState(null);
+
+            // Generate event data for an agent message - use real data if available, otherwise mock
+            const generateEventData = (entry, index) => {
+                const apiData = entry.eventData || {};
+                const eventId = apiData.eventId || `${Math.random().toString(36).substr(2, 5)}`;
+                const latency = apiData.latency || `${(Math.random() * 0.8 + 0.2).toFixed(1)}s`;
+                const tokens = apiData.tokens || Math.floor(Math.random() * 400 + 200);
+                return {
+                    eventId,
+                    action: 'message_to_user',
+                    latency: typeof latency === 'number' ? `${latency}s` : latency,
+                    tokens,
+                    message: entry.content,
+                    timestamp: entry.timestamp,
+                    systemPrompt: {
+                        role: 'You are a helpful customer service agent for StayEasy, a premium hotel booking platform. Your primary goal is to assist customers with their booking inquiries, modifications, cancellations, and any issues they may encounter.',
+                        persona: 'Be friendly, professional, and empathetic. Use a warm and welcoming tone while maintaining efficiency. Always acknowledge customer concerns before providing solutions. Show genuine care for their travel experience.',
+                        strategy: '1. Greet the customer warmly and professionally\n2. Listen carefully and identify their specific need\n3. Verify booking details when necessary (booking ID, dates, property)\n4. Provide clear, actionable solutions\n5. If unable to resolve, escalate appropriately with full context\n6. Confirm customer satisfaction before ending the conversation',
+                        format: 'Keep responses concise but complete. Use natural conversational language. Confirm important details by repeating them back. Avoid technical jargon. Use bullet points for multiple options or steps.'
+                    }
+                };
+            };
+
+            const handleAgentEventClick = (entry, index) => {
+                const eventData = generateEventData(entry, index);
+                setSelectedAgentEvent(eventData);
+                setAgentEventDrawerOpen(true);
+            };
+
+            // Timer for active call
+            useEffect(() => {
+                if (!activeCall) return;
+                const startTime = new Date(activeCall.startTime || Date.now());
+                const updateTimer = () => {
+                    const elapsed = Math.floor((Date.now() - startTime.getTime()) / 1000);
+                    const mins = Math.floor(elapsed / 60);
+                    const secs = elapsed % 60;
+                    setCallElapsed(`${mins}:${secs.toString().padStart(2, '0')}`);
+                };
+                updateTimer();
+                const interval = setInterval(updateTimer, 1000);
+                return () => clearInterval(interval);
+            }, [activeCall]);
+
+            // Show active call view
+            if (activeCall && !conversation) {
+                return (
+                    <div className="flex-1 flex flex-col bg-se-dark">
+                        <div className="p-4 border-b border-se-border">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <div className="flex items-center gap-3 mb-1">
+                                        <h2 className="text-lg font-semibold">Active Call</h2>
+                                        <span className="px-2 py-0.5 rounded text-xs font-semibold bg-se-success/20 text-se-success flex items-center gap-1.5">
+                                            <span className="relative flex h-2 w-2">
+                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-se-success opacity-75"></span>
+                                                <span className="relative inline-flex rounded-full h-2 w-2 bg-se-success"></span>
+                                            </span>
+                                            Live
+                                        </span>
+                                        <div className="px-2 py-0.5 rounded text-xs font-medium flex items-center gap-1 bg-se-blue/20 text-se-blue">
+                                            <Icons.Phone /> voice
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-4 text-sm text-se-muted">
+                                        <span className="text-se-success font-medium">{callElapsed} elapsed</span>
+                                        <span>{activeCall.messageCount || 0} messages</span>
+                                        <span className="font-mono text-xs">{activeCall.id}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex-1 flex items-center justify-center">
+                            <div className="text-center max-w-md">
+                                <div className="w-20 h-20 rounded-full bg-se-success/10 flex items-center justify-center mx-auto mb-4 relative">
+                                    <div className="absolute inset-0 rounded-full bg-se-success/20 animate-ping"></div>
+                                    <Icons.Phone />
+                                </div>
+                                <h3 className="text-lg font-semibold mb-2">Call in Progress</h3>
+                                <p className="text-se-muted text-sm mb-4">
+                                    Voice agent conversation is currently active. The full transcript and evaluation will be available once the call ends.
+                                </p>
+                                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-se-card border border-se-border">
+                                    <span className="text-se-muted text-sm">Duration:</span>
+                                    <span className="text-se-success font-mono font-semibold">{callElapsed}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
 
             if (!conversation) {
                 return (
@@ -1021,7 +1341,13 @@
                     </div>
                     <div className="flex-1 flex overflow-hidden">
                         <div className="flex-1 p-4 overflow-y-auto space-y-4">
-                            {conversation.transcript.map((entry, i) => <TranscriptMessage key={i} entry={entry} />)}
+                            {conversation.transcript.map((entry, i) => (
+                                <TranscriptMessage
+                                    key={i}
+                                    entry={entry}
+                                    onAgentEventClick={(e) => handleAgentEventClick(e, i)}
+                                />
+                            ))}
                         </div>
                         <SummaryPanel
                             conversation={conversation}
@@ -1030,6 +1356,12 @@
                             onToggleCollapse={() => setSummaryCollapsed(!summaryCollapsed)}
                         />
                     </div>
+                    {/* Agent Event Drawer */}
+                    <AgentEventDrawer
+                        isOpen={agentEventDrawerOpen}
+                        onClose={() => setAgentEventDrawerOpen(false)}
+                        eventData={selectedAgentEvent}
+                    />
                 </div>
             );
         };
@@ -1055,7 +1387,13 @@
                 const transcript = (details.transcript || []).map((msg, idx) => ({
                     role: msg.role === 'agent' ? 'agent' : 'customer',
                     content: msg.message || msg.text || '',
-                    timestamp: formatTimestamp(idx * 10) // Approximate timestamps
+                    timestamp: formatTimestamp(idx * 10), // Approximate timestamps
+                    // Include event metadata if available from API
+                    eventData: msg.role === 'agent' ? {
+                        eventId: msg.event_id || msg.id || null,
+                        latency: msg.latency || msg.response_time || null,
+                        tokens: msg.tokens || msg.token_count || null
+                    } : null
                 }));
 
                 // Extract analysis if available
@@ -1408,6 +1746,9 @@
             const [search, setSearch] = useState('');
             const [useMockData, setUseMockData] = useState(!USE_LIVE_API);
 
+            // Active Call State
+            const [activeCall, setActiveCall] = useState(null);
+
             // Sidebar State
             const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
             const [criteriaPanelCollapsed, setCriteriaPanelCollapsed] = useState(false);
@@ -1460,18 +1801,37 @@
                         // No live conversations, fall back to mock
                         console.log('No live conversations found, using mock data');
                         setConversations(MOCK_CONVERSATIONS);
+                        setActiveCall(null);
                         setUseMockData(true);
                         setLoading(false);
                         return;
                     }
 
-                    // Transform basic list first
-                    const basicConvs = convList.map(c => transformConversation(c));
+                    // Separate active calls from completed conversations
+                    const activeStatuses = ['active', 'in_progress', 'processing', 'ongoing'];
+                    const activeConvs = convList.filter(c => activeStatuses.includes(c.status?.toLowerCase()));
+                    const completedConvs = convList.filter(c => !activeStatuses.includes(c.status?.toLowerCase()));
+
+                    // Set active call if found
+                    if (activeConvs.length > 0) {
+                        const active = activeConvs[0];
+                        setActiveCall({
+                            id: active.conversation_id || active.id,
+                            startTime: active.start_time || active.created_at || new Date().toISOString(),
+                            status: 'active',
+                            messageCount: active.turn_count || 0
+                        });
+                    } else {
+                        setActiveCall(null);
+                    }
+
+                    // Transform basic list first (completed conversations only)
+                    const basicConvs = completedConvs.map(c => transformConversation(c));
                     setConversations(basicConvs);
 
-                    // Fetch full details for each conversation
+                    // Fetch full details for each completed conversation
                     const detailedConvs = await Promise.all(
-                        convList.slice(0, 20).map(async (conv) => {
+                        completedConvs.slice(0, 20).map(async (conv) => {
                             try {
                                 const detailRes = await fetch(`${API_BASE}/conversations/${conv.conversation_id}`);
                                 if (detailRes.ok) {
@@ -1501,10 +1861,56 @@
                 fetchConversations();
             }, [useMockData]);
 
+            // Poll for active calls every 5 seconds when using live API
+            useEffect(() => {
+                if (useMockData) return;
+
+                const pollActiveCalls = async () => {
+                    try {
+                        const response = await fetch(`${API_BASE}/conversations`);
+                        if (!response.ok) return;
+                        const data = await response.json();
+                        const convList = data.conversations || data || [];
+
+                        const activeStatuses = ['active', 'in_progress', 'processing', 'ongoing'];
+                        const activeConvs = convList.filter(c => activeStatuses.includes(c.status?.toLowerCase()));
+
+                        if (activeConvs.length > 0) {
+                            const active = activeConvs[0];
+                            setActiveCall(prev => ({
+                                id: active.conversation_id || active.id,
+                                startTime: prev?.id === (active.conversation_id || active.id)
+                                    ? prev.startTime // Keep original start time
+                                    : (active.start_time || active.created_at || new Date().toISOString()),
+                                status: 'active',
+                                messageCount: active.turn_count || 0
+                            }));
+                        } else if (activeCall) {
+                            // Call ended - refresh to get the completed conversation
+                            setActiveCall(null);
+                            fetchConversations();
+                        }
+                    } catch (e) {
+                        console.warn('Failed to poll active calls:', e);
+                    }
+                };
+
+                const interval = setInterval(pollActiveCalls, 5000);
+                return () => clearInterval(interval);
+            }, [useMockData, activeCall]);
+
+            // Handler for selecting an active call
+            const handleSelectActiveCall = (call) => {
+                setSelectedId(call.id);
+            };
+
             const selectedConversation = useMemo(() =>
                 conversations.find(c => c.id === selectedId),
                 [conversations, selectedId]
             );
+
+            // Check if selected ID is the active call
+            const isActiveCallSelected = activeCall && selectedId === activeCall.id;
 
             const toggleDataSource = () => {
                 setUseMockData(!useMockData);
@@ -1554,8 +1960,14 @@
                                 onRefresh={fetchConversations}
                                 useMockData={useMockData}
                                 onToggleDataSource={toggleDataSource}
+                                activeCall={activeCall}
+                                onSelectActiveCall={handleSelectActiveCall}
                             />
-                            <ConversationDetail conversation={selectedConversation} evaluationCriteria={null} />
+                            <ConversationDetail
+                                conversation={selectedConversation}
+                                evaluationCriteria={null}
+                                activeCall={isActiveCallSelected ? activeCall : null}
+                            />
                         </>
                     )}
                     <CriteriaDrawer
