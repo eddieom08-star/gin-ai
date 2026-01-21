@@ -455,6 +455,11 @@
             Knowledge: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>,
             Tool: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>,
             ChevronDown: () => <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/></svg>,
+            Plus: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"/></svg>,
+            Clipboard: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>,
+            Trash: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>,
+            TrendingUp: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>,
+            Clock: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>,
         };
 
         // Components
@@ -471,7 +476,8 @@
             const conversationSubItems = [
                 { id: 'resolved', label: 'Resolved' },
                 { id: 'escalated', label: 'Escalated & Handoff' },
-                { id: 'pending', label: 'Pending' }
+                { id: 'pending', label: 'Pending' },
+                { id: 'evaluate', label: 'Evaluate' }
             ];
 
             return (
@@ -724,8 +730,24 @@
             </div>
         );
 
-        const SummaryPanel = ({ conversation }) => {
+        const SummaryPanel = ({ conversation, evaluationCriteria }) => {
             const { structuredSummary, evaluationResults, proseSummary } = conversation;
+
+            // Generate evaluation results based on criteria (simulated for now)
+            const criteriaBasedResults = evaluationCriteria ? evaluationCriteria.map(c => {
+                // Check if we have an existing result for this criteria
+                const existing = evaluationResults.find(r => r.criteriaId === c.id || r.criteriaName === c.name);
+                if (existing) return existing;
+                // Simulate result based on conversation outcome
+                const passed = structuredSummary.outcome === 'resolved' ? Math.random() > 0.2 : Math.random() > 0.6;
+                return {
+                    criteriaId: c.id,
+                    criteriaName: c.name,
+                    passed,
+                    reasoning: passed ? `Conversation meets ${c.name.toLowerCase()} criteria based on ${c.instructions.slice(0, 50)}...` : `Did not meet ${c.name.toLowerCase()} standards.`
+                };
+            }) : evaluationResults;
+
             return (
                 <div className="w-96 bg-se-darker border-l border-se-border p-4 overflow-y-auto">
                     <h3 className="text-sm font-semibold mb-4 text-se-text">AI Summary</h3>
@@ -780,19 +802,24 @@
                         </div>
 
                         <div className="pt-4 border-t border-se-border">
-                            <h4 className="text-xs font-medium text-se-muted mb-3">Quality Evaluation</h4>
+                            <h4 className="text-xs font-medium text-se-muted mb-3">
+                                {evaluationCriteria ? 'Criteria Evaluation' : 'Quality Evaluation'}
+                            </h4>
                             <div className="space-y-2">
-                                {evaluationResults.map((result, i) => (
+                                {criteriaBasedResults.map((result, i) => (
                                     <EvaluationCard key={i} result={result} />
                                 ))}
                             </div>
+                            {evaluationCriteria && (
+                                <p className="text-xs text-se-muted mt-3 italic">Evaluations based on your custom criteria</p>
+                            )}
                         </div>
                     </div>
                 </div>
             );
         };
 
-        const ConversationDetail = ({ conversation }) => {
+        const ConversationDetail = ({ conversation, evaluationCriteria }) => {
             if (!conversation) {
                 return (
                     <div className="flex-1 flex items-center justify-center bg-se-dark">
@@ -834,7 +861,7 @@
                         <div className="flex-1 p-4 overflow-y-auto space-y-4">
                             {conversation.transcript.map((entry, i) => <TranscriptMessage key={i} entry={entry} />)}
                         </div>
-                        <SummaryPanel conversation={conversation} />
+                        <SummaryPanel conversation={conversation} evaluationCriteria={evaluationCriteria} />
                     </div>
                 </div>
             );
@@ -952,6 +979,149 @@
             return Object.keys(entities).length > 0 ? entities : { conversation_id: details.conversation_id };
         };
 
+        // Default Evaluation Criteria
+        const DEFAULT_CRITERIA = [
+            { id: 'issue_resolved', name: 'Issue Resolved', description: "Evaluate whether the customer's original issue was fully resolved.", instructions: 'Mark as successful if the agent provided a complete solution or answer, or appropriately escalated to a human agent.', passRate: 84, icon: 'Check' },
+            { id: 'efficient_handling', name: 'Efficient Handling', description: 'Assess if the agent handled the conversation efficiently.', instructions: 'Evaluate based on response time, number of unnecessary messages, and directness of communication.', passRate: 91, icon: 'Clock' },
+            { id: 'positive_outcome', name: 'Positive Outcome', description: 'Determine if the customer left with a positive impression.', instructions: 'Consider customer sentiment, explicit feedback, and whether they thanked the agent or expressed satisfaction.', passRate: 78, icon: 'TrendingUp' },
+        ];
+
+        // Evaluation Criteria Panel Component
+        const EvaluationCriteriaPanel = ({ criteria, onAdd, onEdit }) => {
+            const getIcon = (iconName) => {
+                const iconMap = { Check: Icons.Check, Clock: Icons.Clock, TrendingUp: Icons.TrendingUp };
+                const Icon = iconMap[iconName] || Icons.Clipboard;
+                return <Icon />;
+            };
+
+            return (
+                <div className="w-80 bg-se-darker border-l border-se-border p-4 overflow-y-auto">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-sm font-semibold text-se-text">Evaluation Criteria</h3>
+                        <button onClick={onAdd} className="p-1.5 rounded bg-se-accent/20 text-se-accent hover:bg-se-accent/30 transition-colors">
+                            <Icons.Plus />
+                        </button>
+                    </div>
+                    <div className="space-y-3">
+                        {criteria.map((c) => (
+                            <div key={c.id} onClick={() => onEdit(c)}
+                                className="p-3 rounded-lg border border-se-border bg-se-card hover:border-se-accent/50 hover:bg-se-hover transition-all cursor-pointer">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <div className="p-1.5 bg-se-border rounded text-se-accent">{getIcon(c.icon)}</div>
+                                    <span className="text-sm font-medium text-se-text">{c.name}</span>
+                                </div>
+                                <p className="text-xs text-se-muted mb-2 ml-8">{c.description}</p>
+                                <div className="flex items-center gap-2">
+                                    <div className="flex-1 h-1.5 bg-se-border rounded-full overflow-hidden">
+                                        <div className="h-full bg-se-accent rounded-full transition-all" style={{ width: `${c.passRate}%` }} />
+                                    </div>
+                                    <span className="text-xs text-se-muted">{c.passRate}%</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="mt-4 p-3 bg-se-card/50 rounded-lg border border-se-border">
+                        <p className="text-xs text-se-muted">Criteria are used to evaluate each conversation. Results appear in the AI Summary panel.</p>
+                    </div>
+                </div>
+            );
+        };
+
+        // Criteria Drawer Component
+        const CriteriaDrawer = ({ isOpen, criteria, onClose, onSave, onDelete }) => {
+            const [formData, setFormData] = useState({ name: '', description: '', instructions: '' });
+            const isEditing = criteria !== null;
+
+            useEffect(() => {
+                if (criteria) {
+                    setFormData({ name: criteria.name, description: criteria.description, instructions: criteria.instructions || '' });
+                } else {
+                    setFormData({ name: '', description: '', instructions: '' });
+                }
+            }, [criteria, isOpen]);
+
+            const handleSave = () => {
+                if (formData.name && formData.description) {
+                    onSave({ ...criteria, ...formData, id: criteria?.id || formData.name.toLowerCase().replace(/\s+/g, '_'), passRate: criteria?.passRate || 0, icon: criteria?.icon || 'Check' });
+                }
+            };
+
+            if (!isOpen) return null;
+
+            return (
+                <>
+                    <div className="fixed inset-0 bg-black/50 z-40" onClick={onClose} />
+                    <div className="fixed right-0 top-0 h-full w-96 bg-se-darker border-l border-se-border z-50 shadow-2xl flex flex-col" style={{ animation: 'slideIn 0.2s ease-out' }}>
+                        <div className="p-4 border-b border-se-border">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h2 className="text-lg font-semibold text-se-text">{isEditing ? 'Edit Criteria' : 'Create Criteria'}</h2>
+                                    <p className="text-xs text-se-muted mt-1">{isEditing ? 'Modify evaluation criteria' : 'Define how conversations are evaluated'}</p>
+                                </div>
+                                <button onClick={onClose} className="p-1.5 hover:bg-se-hover rounded transition-colors text-se-muted">
+                                    <Icons.X />
+                                </button>
+                            </div>
+                        </div>
+                        <div className="flex-1 p-4 overflow-y-auto space-y-4">
+                            <div>
+                                <label className="block text-xs font-medium text-se-muted mb-1.5">Criteria Name</label>
+                                <input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                    placeholder="e.g., Customer Satisfaction" className="w-full px-3 py-2 bg-se-card border border-se-border rounded-lg text-sm focus:outline-none focus:border-se-accent" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-se-muted mb-1.5">Description</label>
+                                <textarea value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})}
+                                    placeholder="Brief description of what this criteria measures..." rows={3}
+                                    className="w-full px-3 py-2 bg-se-card border border-se-border rounded-lg text-sm focus:outline-none focus:border-se-accent resize-none" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-se-muted mb-1.5">Evaluation Instructions</label>
+                                <textarea value={formData.instructions} onChange={(e) => setFormData({...formData, instructions: e.target.value})}
+                                    placeholder="Detailed instructions for how the AI should evaluate this criteria..." rows={5}
+                                    className="w-full px-3 py-2 bg-se-card border border-se-border rounded-lg text-sm focus:outline-none focus:border-se-accent resize-none" />
+                                <p className="text-xs text-se-muted mt-1">This will be used as a prompt for evaluating conversations.</p>
+                            </div>
+                            <div className="p-3 bg-se-card/50 rounded-lg border border-se-border">
+                                <p className="text-xs font-medium text-se-text mb-1">Tips for good criteria</p>
+                                <ul className="text-xs text-se-muted space-y-0.5">
+                                    <li>• Be specific about what constitutes success</li>
+                                    <li>• Include examples of pass/fail scenarios</li>
+                                    <li>• Focus on one measurable outcome</li>
+                                </ul>
+                            </div>
+                            {isEditing && criteria.passRate > 0 && (
+                                <div className="p-3 bg-se-card/50 rounded-lg border border-se-border">
+                                    <p className="text-xs font-medium text-se-muted mb-2">Performance</p>
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex-1 h-2 bg-se-border rounded-full overflow-hidden">
+                                            <div className="h-full bg-se-accent rounded-full" style={{ width: `${criteria.passRate}%` }} />
+                                        </div>
+                                        <span className="text-sm font-semibold text-se-accent">{criteria.passRate}%</span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        <div className="p-4 border-t border-se-border space-y-2">
+                            {isEditing && (
+                                <button onClick={() => onDelete(criteria.id)} className="w-full px-3 py-2 bg-se-error/10 hover:bg-se-error/20 text-se-error rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2">
+                                    <Icons.Trash /> Delete Criteria
+                                </button>
+                            )}
+                            <div className="flex gap-2">
+                                <button onClick={onClose} className="flex-1 px-3 py-2 bg-se-card hover:bg-se-hover rounded-lg text-sm font-medium transition-colors">Cancel</button>
+                                <button onClick={handleSave} disabled={!formData.name || !formData.description}
+                                    className="flex-1 px-3 py-2 bg-se-accent hover:bg-se-accent/80 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-sm font-medium transition-colors text-white">
+                                    {isEditing ? 'Save Changes' : 'Create'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <style>{'@keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }'}</style>
+                </>
+            );
+        };
+
         // Main App
         const App = () => {
             const [conversations, setConversations] = useState([]);
@@ -961,6 +1131,29 @@
             const [conversationFilter, setConversationFilter] = useState('all');
             const [search, setSearch] = useState('');
             const [useMockData, setUseMockData] = useState(!USE_LIVE_API);
+
+            // Evaluation Criteria State
+            const [evaluationCriteria, setEvaluationCriteria] = useState(DEFAULT_CRITERIA);
+            const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+            const [editingCriteria, setEditingCriteria] = useState(null);
+
+            const openCreateDrawer = () => { setEditingCriteria(null); setIsDrawerOpen(true); };
+            const openEditDrawer = (criteria) => { setEditingCriteria(criteria); setIsDrawerOpen(true); };
+            const closeDrawer = () => { setIsDrawerOpen(false); setEditingCriteria(null); };
+
+            const saveCriteria = (criteriaData) => {
+                if (editingCriteria) {
+                    setEvaluationCriteria(evaluationCriteria.map(c => c.id === criteriaData.id ? criteriaData : c));
+                } else {
+                    setEvaluationCriteria([...evaluationCriteria, criteriaData]);
+                }
+                closeDrawer();
+            };
+
+            const deleteCriteria = (id) => {
+                setEvaluationCriteria(evaluationCriteria.filter(c => c.id !== id));
+                closeDrawer();
+            };
 
             // Fetch conversations from API
             const fetchConversations = async () => {
@@ -1037,6 +1230,8 @@
                 setUseMockData(!useMockData);
             };
 
+            const isEvaluateMode = conversationFilter === 'evaluate';
+
             return (
                 <div className="h-screen flex">
                     <NavSidebar conversationFilter={conversationFilter} setConversationFilter={setConversationFilter} />
@@ -1044,7 +1239,7 @@
                         conversations={conversations}
                         selectedId={selectedId}
                         onSelect={setSelectedId}
-                        filter={conversationFilter}
+                        filter={isEvaluateMode ? 'all' : conversationFilter}
                         search={search}
                         setSearch={setSearch}
                         loading={loading}
@@ -1053,7 +1248,21 @@
                         useMockData={useMockData}
                         onToggleDataSource={toggleDataSource}
                     />
-                    <ConversationDetail conversation={selectedConversation} />
+                    <ConversationDetail conversation={selectedConversation} evaluationCriteria={isEvaluateMode ? evaluationCriteria : null} />
+                    {isEvaluateMode && (
+                        <EvaluationCriteriaPanel
+                            criteria={evaluationCriteria}
+                            onAdd={openCreateDrawer}
+                            onEdit={openEditDrawer}
+                        />
+                    )}
+                    <CriteriaDrawer
+                        isOpen={isDrawerOpen}
+                        criteria={editingCriteria}
+                        onClose={closeDrawer}
+                        onSave={saveCriteria}
+                        onDelete={deleteCriteria}
+                    />
                 </div>
             );
         };
