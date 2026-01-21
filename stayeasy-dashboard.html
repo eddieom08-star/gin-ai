@@ -840,7 +840,7 @@
                 setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
             };
 
-            // Mock system prompt sections
+            // System prompt sections
             const systemPromptSections = [
                 { id: 'role', title: 'Your Role', content: eventData?.systemPrompt?.role || 'You are a helpful customer service agent for StayEasy, a hotel booking platform. Your primary goal is to assist customers with their booking inquiries, modifications, and issues.' },
                 { id: 'persona', title: 'Your Persona', content: eventData?.systemPrompt?.persona || 'Be friendly, professional, and empathetic. Use a warm tone while maintaining efficiency. Always acknowledge customer concerns before providing solutions.' },
@@ -852,57 +852,53 @@
                 <>
                     {/* Backdrop */}
                     <div
-                        className="fixed inset-0 bg-black/50 z-40"
+                        className="fixed inset-0 bg-black/60 z-40"
                         onClick={onClose}
                     />
-                    {/* Drawer */}
-                    <div className="fixed right-0 top-0 h-full w-[480px] bg-white z-50 shadow-2xl overflow-hidden flex flex-col"
+                    {/* Drawer - Dark theme matching dashboard */}
+                    <div className="fixed right-0 top-0 h-full w-[480px] bg-se-darker z-50 shadow-2xl overflow-hidden flex flex-col border-l border-se-border"
                         style={{ animation: 'slideInRight 0.2s ease-out' }}>
                         {/* Header */}
-                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-                            <div className="flex items-center gap-3">
-                                <h2 className="text-lg font-semibold text-gray-900">Agent Invocation Event</h2>
+                        <div className="flex items-center justify-between px-5 py-4 border-b border-se-border">
+                            <div className="flex items-center gap-2">
+                                <h2 className="text-base font-semibold text-se-text">Agent Event</h2>
                                 <button
                                     onClick={() => copyToClipboard(eventData?.eventId || '', 'header')}
-                                    className="text-gray-400 hover:text-gray-600">
+                                    className="text-se-muted hover:text-se-text transition-colors">
                                     <Icons.Link />
                                 </button>
                             </div>
                             <div className="flex items-center gap-2">
-                                <button className="px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-1.5">
+                                <button className="px-3 py-1.5 border border-se-border rounded-lg text-xs font-medium text-se-text hover:bg-se-hover flex items-center gap-1.5 transition-colors">
                                     <Icons.Plus /> Rating
                                 </button>
-                                <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded">
+                                <button onClick={onClose} className="p-1.5 text-se-muted hover:text-se-text hover:bg-se-hover rounded-lg transition-colors">
                                     <Icons.X />
                                 </button>
                             </div>
                         </div>
 
-                        {/* Event Metadata */}
-                        <div className="px-6 py-4 border-b border-gray-200">
-                            <div className="grid grid-cols-4 gap-4">
+                        {/* Event Metadata - 3 columns (removed Action) */}
+                        <div className="px-5 py-4 border-b border-se-border bg-se-card/30">
+                            <div className="grid grid-cols-3 gap-6">
                                 <div>
-                                    <div className="text-xs text-gray-500 mb-1">Event ID</div>
+                                    <div className="text-xs text-se-muted mb-1">Event ID</div>
                                     <div className="flex items-center gap-1.5">
-                                        <span className="text-sm font-medium text-gray-900">{eventData?.eventId?.slice(0, 5) || '7b16b'}</span>
+                                        <span className="text-sm font-medium text-se-text font-mono">{eventData?.eventId?.slice(0, 5) || '7b16b'}</span>
                                         <button
                                             onClick={() => copyToClipboard(eventData?.eventId || '7b16b...', 'eventId')}
-                                            className="text-gray-400 hover:text-gray-600">
+                                            className="text-se-muted hover:text-se-text transition-colors">
                                             <Icons.Copy />
                                         </button>
                                     </div>
                                 </div>
                                 <div>
-                                    <div className="text-xs text-gray-500 mb-1">Action</div>
-                                    <span className="text-sm text-gray-900">{eventData?.action || 'message_to_...'}</span>
+                                    <div className="text-xs text-se-muted mb-1">Latency</div>
+                                    <span className="text-sm font-medium text-se-text">{eventData?.latency || '0.4s'}</span>
                                 </div>
                                 <div>
-                                    <div className="text-xs text-gray-500 mb-1">Latency</div>
-                                    <span className="text-sm text-gray-900">{eventData?.latency || '0.4s'}</span>
-                                </div>
-                                <div>
-                                    <div className="text-xs text-gray-500 mb-1">Event Tokens</div>
-                                    <span className="text-sm text-gray-900">{eventData?.tokens || '432'}</span>
+                                    <div className="text-xs text-se-muted mb-1">Event Tokens</div>
+                                    <span className="text-sm font-medium text-se-text">{eventData?.tokens || '432'}</span>
                                 </div>
                             </div>
                         </div>
@@ -910,49 +906,51 @@
                         {/* Content */}
                         <div className="flex-1 overflow-y-auto">
                             {/* Tabs */}
-                            <div className="px-6 pt-4 border-b border-gray-200">
+                            <div className="px-5 pt-4 border-b border-se-border">
                                 <div className="flex gap-6">
-                                    <button className="pb-3 text-sm font-medium text-gray-900 border-b-2 border-gray-900">Details</button>
-                                    <button className="pb-3 text-sm font-medium text-gray-500 hover:text-gray-700">Raw Event</button>
+                                    <button className="pb-3 text-sm font-medium text-se-text border-b-2 border-se-accent">Details</button>
+                                    <button className="pb-3 text-sm font-medium text-se-muted hover:text-se-text transition-colors">Raw Event</button>
                                 </div>
                             </div>
 
-                            <div className="p-6 space-y-6">
+                            <div className="p-5 space-y-5">
                                 {/* Message to User */}
                                 <div>
                                     <div className="flex items-center justify-between mb-3">
-                                        <h3 className="text-sm font-semibold text-gray-900">Message to User</h3>
+                                        <h3 className="text-sm font-semibold text-se-text">Message to User</h3>
                                         <button
                                             onClick={() => copyToClipboard(eventData?.message || '', 'message')}
-                                            className="text-gray-400 hover:text-gray-600">
+                                            className="text-se-muted hover:text-se-text transition-colors">
                                             <Icons.Copy />
                                         </button>
                                     </div>
-                                    <div className="bg-gray-50 rounded-lg p-4 flex items-start gap-3">
-                                        <p className="text-sm text-gray-700 flex-1">{eventData?.message || 'Hello! How can I assist you today?'}</p>
-                                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex-shrink-0" />
+                                    <div className="bg-se-card rounded-lg p-4 flex items-start gap-3 border border-se-border">
+                                        <p className="text-sm text-se-text flex-1 leading-relaxed">{eventData?.message || 'Hello! How can I assist you today?'}</p>
+                                        <div className="w-6 h-6 rounded-full bg-se-accent flex-shrink-0 flex items-center justify-center">
+                                            <Icons.Bot />
+                                        </div>
                                     </div>
                                 </div>
 
                                 {/* System Prompt */}
                                 <div>
-                                    <h3 className="text-sm font-semibold text-gray-900 mb-3">System Prompt</h3>
-                                    <div className="space-y-1">
+                                    <h3 className="text-sm font-semibold text-se-text mb-3">System Prompt</h3>
+                                    <div className="space-y-2">
                                         {systemPromptSections.map(section => (
-                                            <div key={section.id} className="border border-gray-200 rounded-lg overflow-hidden">
+                                            <div key={section.id} className="border border-se-border rounded-lg overflow-hidden bg-se-card/50">
                                                 <button
                                                     onClick={() => toggleSection(section.id)}
-                                                    className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                                                    className="w-full px-4 py-3 flex items-center justify-between hover:bg-se-hover transition-colors">
                                                     <div className="flex items-center gap-2">
-                                                        <span className={`transition-transform ${expandedSections[section.id] ? 'rotate-90' : ''}`}>
+                                                        <span className={`transition-transform text-se-muted ${expandedSections[section.id] ? 'rotate-90' : ''}`}>
                                                             <Icons.ChevronRight />
                                                         </span>
-                                                        <span className="text-sm font-medium text-gray-700">{section.title}</span>
+                                                        <span className="text-sm font-medium text-se-text">{section.title}</span>
                                                     </div>
                                                 </button>
                                                 {expandedSections[section.id] && (
-                                                    <div className="px-4 pb-4 pt-0">
-                                                        <div className="pl-6 text-sm text-gray-600 whitespace-pre-wrap">
+                                                    <div className="px-4 pb-4 pt-0 border-t border-se-border">
+                                                        <div className="pl-6 pt-3 text-sm text-se-muted whitespace-pre-wrap leading-relaxed">
                                                             {section.content}
                                                         </div>
                                                     </div>
@@ -983,7 +981,7 @@
                                 onClick={() => onAgentEventClick && onAgentEventClick(entry)}
                                 className="mb-1 px-2.5 py-1.5 bg-se-card hover:bg-se-hover border border-se-border rounded text-xs text-se-muted hover:text-se-text flex items-center gap-1.5 transition-colors">
                                 <Icons.Zap />
-                                <span className="font-medium">Agent Invocation</span>
+                                <span className="font-medium">Agent Event</span>
                             </button>
                         )}
                         <div className={`px-4 py-2.5 rounded-2xl ${isAgent ? 'bg-se-card rounded-tl-sm' : 'bg-se-accent rounded-tr-sm'}`}>
