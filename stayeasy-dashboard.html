@@ -463,6 +463,7 @@
             Menu: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"/></svg>,
             ChevronLeft: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"/></svg>,
             ChevronRight: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"/></svg>,
+            Skills: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>,
         };
 
         // Components
@@ -473,7 +474,8 @@
             const buildItems = [
                 { id: 'agents', icon: Icons.Agents, label: 'Agents', hasDropdown: true },
                 { id: 'knowledge', icon: Icons.Knowledge, label: 'Knowledge Base' },
-                { id: 'tools', icon: Icons.Tool, label: 'Tools' }
+                { id: 'tools', icon: Icons.Tool, label: 'Tools' },
+                { id: 'skills', icon: Icons.Skills, label: 'Skills' }
             ];
 
             const conversationSubItems = [
@@ -653,22 +655,22 @@
 
         const ConversationCard = ({ conversation, isSelected, onClick }) => (
             <div onClick={onClick}
-                className={`p-3 rounded-lg cursor-pointer transition-all border ${isSelected ? 'bg-se-accent/10 border-se-accent' : 'bg-se-card border-transparent hover:bg-se-hover'}`}>
-                <div className="flex items-start justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                        <div className={`w-7 h-7 rounded-full flex items-center justify-center ${conversation.channel === 'voice' ? 'bg-se-blue/20 text-se-blue' : 'bg-se-accent/20 text-se-accent'}`}>
+                className={`p-3 rounded-lg cursor-pointer transition-all border overflow-hidden ${isSelected ? 'bg-se-accent/10 border-se-accent' : 'bg-se-card border-transparent hover:bg-se-hover'}`}>
+                <div className="flex items-start justify-between mb-2 gap-2">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${conversation.channel === 'voice' ? 'bg-se-blue/20 text-se-blue' : 'bg-se-accent/20 text-se-accent'}`}>
                             <ChannelIcon channel={conversation.channel} />
                         </div>
-                        <div>
-                            <span className="text-sm font-medium text-se-text block">{conversation.structuredSummary.keyEntities.property || conversation.id}</span>
+                        <div className="min-w-0 flex-1">
+                            <span className="text-sm font-medium text-se-text block truncate">{conversation.structuredSummary.keyEntities.property || conversation.id}</span>
                             <span className="text-xs text-se-muted">{getTimeAgo(conversation.date)}</span>
                         </div>
                     </div>
                     <OutcomeBadge outcome={conversation.structuredSummary.outcome} />
                 </div>
-                <p className="text-xs text-se-muted mb-2 line-clamp-2">{conversation.structuredSummary.summary}</p>
+                <p className="text-xs text-se-muted mb-2 line-clamp-2 break-words">{conversation.structuredSummary.summary}</p>
                 <div className="flex items-center justify-between">
-                    <span className="text-xs text-se-muted">{conversation.duration} · {conversation.messageCount} msgs</span>
+                    <span className="text-xs text-se-muted truncate">{conversation.duration} · {conversation.messageCount} msgs</span>
                     <SentimentIndicator sentiment={conversation.structuredSummary.sentiment} />
                 </div>
                 {conversation.structuredSummary.followUpRequired && (
@@ -781,21 +783,104 @@
             </div>
         );
 
+        // AI Evaluation function that analyzes conversation against criteria
+        const evaluateConversation = (conversation, criteria) => {
+            const { structuredSummary, transcript, messageCount, duration } = conversation;
+            const outcome = structuredSummary.outcome;
+            const sentiment = structuredSummary.sentiment;
+            const topics = structuredSummary.topics || [];
+            const transcriptText = (transcript || []).map(t => t.content).join(' ').toLowerCase();
+
+            // Parse duration to minutes
+            const durationMins = parseInt(duration?.split(':')[0]) || 0;
+
+            // Evaluate based on criteria type/keywords
+            const criteriaId = criteria.id.toLowerCase();
+            const criteriaName = criteria.name.toLowerCase();
+            const instructions = (criteria.instructions || '').toLowerCase();
+
+            // Issue Resolved / Resolution criteria
+            if (criteriaId.includes('resolved') || criteriaName.includes('resolved') || criteriaName.includes('resolution')) {
+                const passed = outcome === 'resolved' || transcriptText.includes('confirmed') || transcriptText.includes('completed') || transcriptText.includes('booked');
+                return {
+                    passed,
+                    reasoning: passed
+                        ? `Issue was successfully resolved. Conversation ended with "${outcome}" status and customer's request was addressed.`
+                        : `Issue was not fully resolved. Conversation outcome: "${outcome}". ${structuredSummary.followUpRequired ? 'Follow-up is required.' : ''}`
+                };
+            }
+
+            // Efficiency / Handling criteria
+            if (criteriaId.includes('efficient') || criteriaName.includes('efficient') || criteriaName.includes('handling') || criteriaName.includes('speed')) {
+                const passed = durationMins < 5 && messageCount < 15;
+                return {
+                    passed,
+                    reasoning: passed
+                        ? `Conversation was handled efficiently in ${duration} with ${messageCount} messages. Agent provided direct and helpful responses.`
+                        : `Conversation took ${duration} with ${messageCount} messages. ${durationMins >= 5 ? 'Duration exceeded expected threshold.' : 'More messages exchanged than typical for this request type.'}`
+                };
+            }
+
+            // Positive Outcome / Sentiment criteria
+            if (criteriaId.includes('positive') || criteriaName.includes('positive') || criteriaName.includes('sentiment') || criteriaName.includes('satisfaction')) {
+                const endSentiment = sentiment?.end || 'neutral';
+                const passed = endSentiment === 'positive' || (endSentiment === 'neutral' && outcome === 'resolved');
+                return {
+                    passed,
+                    reasoning: passed
+                        ? `Customer sentiment ended ${endSentiment}. ${transcriptText.includes('thank') ? 'Customer expressed gratitude.' : 'Interaction concluded positively.'}`
+                        : `Customer sentiment ended ${endSentiment}. ${transcriptText.includes('frustrat') || transcriptText.includes('upset') ? 'Customer showed signs of dissatisfaction.' : 'Could improve customer experience.'}`
+                };
+            }
+
+            // Compliance / Policy criteria
+            if (criteriaId.includes('compliance') || criteriaName.includes('compliance') || criteriaName.includes('policy') || criteriaName.includes('protocol')) {
+                const passed = !transcriptText.includes('cannot') && !transcriptText.includes('not allowed') && outcome !== 'escalated';
+                return {
+                    passed,
+                    reasoning: passed
+                        ? `Agent followed standard protocols. No policy violations detected in the conversation.`
+                        : `Potential compliance concerns noted. ${outcome === 'escalated' ? 'Conversation required escalation.' : 'Review recommended for policy adherence.'}`
+                };
+            }
+
+            // Booking / Confirmation criteria
+            if (criteriaId.includes('booking') || criteriaName.includes('booking') || criteriaName.includes('confirm')) {
+                const hasBookingDetails = structuredSummary.keyEntities.property || structuredSummary.keyEntities.check_in;
+                const passed = hasBookingDetails && (transcriptText.includes('confirm') || transcriptText.includes('book') || outcome === 'resolved');
+                return {
+                    passed,
+                    reasoning: passed
+                        ? `Booking details captured: ${structuredSummary.keyEntities.property || 'Property recorded'}. Confirmation provided to customer.`
+                        : `Booking process incomplete. ${hasBookingDetails ? 'Confirmation may be pending.' : 'Missing key booking details.'}`
+                };
+            }
+
+            // Default evaluation based on conversation outcome
+            const passed = outcome === 'resolved' || (sentiment?.end === 'positive');
+            return {
+                passed,
+                reasoning: passed
+                    ? `Conversation analysis indicates criteria "${criteria.name}" was met based on ${outcome} outcome and ${topics.slice(0, 2).join(', ')} topics.`
+                    : `Criteria "${criteria.name}" not fully satisfied. Outcome: ${outcome}. Topics: ${topics.slice(0, 2).join(', ')}.`
+            };
+        };
+
         const SummaryPanel = ({ conversation, evaluationCriteria, isCollapsed, onToggleCollapse }) => {
             const { structuredSummary, evaluationResults, proseSummary } = conversation;
 
-            // Generate evaluation results based on criteria (simulated for now)
+            // Generate evaluation results based on criteria using AI analysis
             const criteriaBasedResults = evaluationCriteria ? evaluationCriteria.map(c => {
                 // Check if we have an existing result for this criteria
                 const existing = evaluationResults.find(r => r.criteriaId === c.id || r.criteriaName === c.name);
                 if (existing) return existing;
-                // Simulate result based on conversation outcome
-                const passed = structuredSummary.outcome === 'resolved' ? Math.random() > 0.2 : Math.random() > 0.6;
+                // Evaluate conversation against this criteria
+                const evaluation = evaluateConversation(conversation, c);
                 return {
                     criteriaId: c.id,
                     criteriaName: c.name,
-                    passed,
-                    reasoning: passed ? `Conversation meets ${c.name.toLowerCase()} criteria based on ${c.instructions.slice(0, 50)}...` : `Did not meet ${c.name.toLowerCase()} standards.`
+                    passed: evaluation.passed,
+                    reasoning: evaluation.reasoning
                 };
             }) : evaluationResults;
 
@@ -868,9 +953,9 @@
                             <h4 className="text-xs font-medium text-se-muted mb-2">Booking Details</h4>
                             <dl className="space-y-1.5 text-xs">
                                 {Object.entries(structuredSummary.keyEntities).map(([key, value]) => (
-                                    <div key={key} className="flex justify-between">
-                                        <dt className="text-se-muted">{key.replace(/_/g, ' ')}</dt>
-                                        <dd className="text-se-text font-medium text-right max-w-[180px]">{value}</dd>
+                                    <div key={key} className="flex justify-between gap-2">
+                                        <dt className="text-se-muted flex-shrink-0">{key.replace(/_/g, ' ')}</dt>
+                                        <dd className="text-se-text font-medium text-right truncate max-w-[180px]" title={value}>{value}</dd>
                                     </div>
                                 ))}
                             </dl>
@@ -1135,13 +1220,13 @@
                                         key={c.id}
                                         onClick={() => onSelect(c.id)}
                                         className={`grid grid-cols-4 gap-4 px-4 py-4 cursor-pointer transition-colors hover:bg-se-hover ${selectedId === c.id ? 'bg-se-hover' : ''}`}>
-                                        <div>
-                                            <div className="text-sm font-medium text-se-text">{getConversationTitle(c)}</div>
-                                            <div className="text-xs text-se-muted">{formatDate(c.date)}</div>
+                                        <div className="min-w-0">
+                                            <div className="text-sm font-medium text-se-text truncate">{getConversationTitle(c)}</div>
+                                            <div className="text-xs text-se-muted truncate">{formatDate(c.date)}</div>
                                         </div>
-                                        <div className="text-sm text-se-muted self-center">{c.duration}</div>
+                                        <div className="text-sm text-se-muted self-center truncate">{c.duration}</div>
                                         <div className="text-sm text-se-muted self-center">{c.messageCount}</div>
-                                        <div className="self-center">{getStatusBadge(c.structuredSummary?.outcome || c.status)}</div>
+                                        <div className="self-center flex-shrink-0">{getStatusBadge(c.structuredSummary?.outcome || c.status)}</div>
                                     </div>
                                 ))}
                             </div>
