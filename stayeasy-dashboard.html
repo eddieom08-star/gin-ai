@@ -551,7 +551,7 @@
             </div>
         );
 
-        const ConversationList = ({ conversations, selectedId, onSelect, filter, search, setSearch }) => {
+        const ConversationList = ({ conversations, selectedId, onSelect, filter, search, setSearch, loading, error, onRefresh, useMockData, onToggleDataSource }) => {
             const filtered = useMemo(() => conversations.filter(c => {
                 const outcome = c.structuredSummary.outcome;
                 if (filter === 'resolved' && outcome !== 'resolved') return false;
@@ -573,9 +573,23 @@
             return (
                 <div className="w-80 bg-se-darker border-r border-se-border flex flex-col h-full">
                     <div className="p-4 border-b border-se-border">
-                        <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center justify-between mb-3">
                             <span className="text-sm font-medium">Conversations</span>
-                            <span className="text-xs text-se-muted">{filtered.length} of {stats.total}</span>
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs text-se-muted">{filtered.length} of {stats.total}</span>
+                                <button onClick={onRefresh} disabled={loading}
+                                    className={`p-1.5 rounded text-se-muted hover:text-se-text hover:bg-se-hover transition-colors ${loading ? 'animate-spin' : ''}`}
+                                    title="Refresh conversations">
+                                    <Icons.Refresh />
+                                </button>
+                            </div>
+                        </div>
+                        <div className="flex items-center justify-between mb-3">
+                            <button onClick={onToggleDataSource}
+                                className={`px-2 py-1 rounded text-xs font-medium transition-colors ${useMockData ? 'bg-se-warning/20 text-se-warning' : 'bg-se-success/20 text-se-success'}`}>
+                                {useMockData ? 'Mock Data' : 'Live API'}
+                            </button>
+                            {error && <span className="text-xs text-se-error">Error: {error}</span>}
                         </div>
                         <div className="relative">
                             <input type="text" placeholder="Search by property or topic..."
@@ -585,7 +599,12 @@
                         </div>
                     </div>
                     <div className="flex-1 overflow-y-auto p-3 space-y-2">
-                        {filtered.length === 0 ? (
+                        {loading ? (
+                            <div className="text-center py-8">
+                                <div className="w-8 h-8 border-2 border-se-accent border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                                <span className="text-se-muted text-sm">Loading conversations...</span>
+                            </div>
+                        ) : filtered.length === 0 ? (
                             <div className="text-center py-8 text-se-muted text-sm">No conversations found</div>
                         ) : (
                             filtered.map(c => (
@@ -750,17 +769,202 @@
             );
         };
 
+        // API Configuration
+        const API_BASE = '/api';
+        const USE_LIVE_API = true; // Toggle to switch between live API and mock data
+
+        // Transform ElevenLabs conversation to dashboard format
+        const transformConversation = (conv, details = null) => {
+            // Basic info from list API
+            const base = {
+                id: conv.conversation_id || conv.id,
+                date: conv.start_time || conv.created_at || new Date().toISOString(),
+                duration: conv.call_duration ? formatDuration(conv.call_duration) : '0:00',
+                messageCount: details?.transcript?.length || conv.turn_count || 0,
+                channel: 'voice',
+                status: conv.status || 'successful',
+            };
+
+            // If we have full details, use them
+            if (details) {
+                const transcript = (details.transcript || []).map((msg, idx) => ({
+                    role: msg.role === 'agent' ? 'agent' : 'customer',
+                    content: msg.message || msg.text || '',
+                    timestamp: formatTimestamp(idx * 10) // Approximate timestamps
+                }));
+
+                // Extract analysis if available
+                const analysis = details.analysis || {};
+
+                return {
+                    ...base,
+                    messageCount: transcript.length,
+                    transcript,
+                    proseSummary: analysis.summary || analysis.call_summary || 'Conversation with voice agent.',
+                    structuredSummary: {
+                        outcome: mapStatus(conv.status, analysis),
+                        sentiment: {
+                            start: analysis.user_sentiment_start || 'neutral',
+                            end: analysis.user_sentiment_end || analysis.user_sentiment || 'neutral'
+                        },
+                        topics: analysis.topics || analysis.data_collection_results?.topics || ['general_inquiry'],
+                        actionItems: analysis.action_items || [],
+                        followUpRequired: analysis.follow_up_required || false,
+                        keyEntities: extractEntities(analysis, details),
+                        summary: analysis.summary || analysis.call_summary || 'Voice agent conversation.'
+                    },
+                    evaluationResults: (analysis.evaluation_results || []).map(er => ({
+                        criteriaId: er.criteria_id || er.id,
+                        criteriaName: er.criteria_name || er.name || 'Evaluation',
+                        passed: er.passed ?? er.result === 'pass',
+                        reasoning: er.reasoning || er.rationale || ''
+                    }))
+                };
+            }
+
+            // Minimal version without details
+            return {
+                ...base,
+                transcript: [],
+                proseSummary: 'Loading conversation details...',
+                structuredSummary: {
+                    outcome: mapStatus(conv.status),
+                    sentiment: { start: 'neutral', end: 'neutral' },
+                    topics: ['voice_call'],
+                    actionItems: [],
+                    followUpRequired: false,
+                    keyEntities: { conversation_id: base.id },
+                    summary: 'Voice agent conversation'
+                },
+                evaluationResults: []
+            };
+        };
+
+        const formatDuration = (seconds) => {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        };
+
+        const formatTimestamp = (seconds) => {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        };
+
+        const mapStatus = (status, analysis = {}) => {
+            if (analysis.outcome) return analysis.outcome;
+            const statusMap = {
+                'done': 'resolved',
+                'completed': 'resolved',
+                'success': 'resolved',
+                'successful': 'resolved',
+                'failed': 'abandoned',
+                'error': 'abandoned',
+                'transferred': 'handed_over',
+                'escalated': 'escalated'
+            };
+            return statusMap[status?.toLowerCase()] || 'resolved';
+        };
+
+        const extractEntities = (analysis, details) => {
+            const entities = {};
+            if (analysis.data_collection_results) {
+                Object.entries(analysis.data_collection_results).forEach(([key, value]) => {
+                    if (value && typeof value === 'string') {
+                        entities[key] = value;
+                    }
+                });
+            }
+            if (details.agent_id) entities.agent_id = details.agent_id;
+            if (details.conversation_id) entities.conversation_id = details.conversation_id;
+            return Object.keys(entities).length > 0 ? entities : { conversation_id: details.conversation_id };
+        };
+
         // Main App
         const App = () => {
-            const [conversations] = useState(MOCK_CONVERSATIONS);
+            const [conversations, setConversations] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [error, setError] = useState(null);
             const [selectedId, setSelectedId] = useState(null);
             const [conversationFilter, setConversationFilter] = useState('all');
             const [search, setSearch] = useState('');
+            const [useMockData, setUseMockData] = useState(!USE_LIVE_API);
+
+            // Fetch conversations from API
+            const fetchConversations = async () => {
+                if (useMockData) {
+                    setConversations(MOCK_CONVERSATIONS);
+                    setLoading(false);
+                    return;
+                }
+
+                setLoading(true);
+                setError(null);
+
+                try {
+                    const response = await fetch(`${API_BASE}/conversations`);
+                    if (!response.ok) {
+                        throw new Error(`API error: ${response.status}`);
+                    }
+                    const data = await response.json();
+
+                    // ElevenLabs returns { conversations: [...] }
+                    const convList = data.conversations || data || [];
+
+                    if (convList.length === 0) {
+                        // No live conversations, fall back to mock
+                        console.log('No live conversations found, using mock data');
+                        setConversations(MOCK_CONVERSATIONS);
+                        setUseMockData(true);
+                        setLoading(false);
+                        return;
+                    }
+
+                    // Transform basic list first
+                    const basicConvs = convList.map(c => transformConversation(c));
+                    setConversations(basicConvs);
+
+                    // Fetch full details for each conversation
+                    const detailedConvs = await Promise.all(
+                        convList.slice(0, 20).map(async (conv) => {
+                            try {
+                                const detailRes = await fetch(`${API_BASE}/conversations/${conv.conversation_id}`);
+                                if (detailRes.ok) {
+                                    const details = await detailRes.json();
+                                    return transformConversation(conv, details);
+                                }
+                            } catch (e) {
+                                console.warn(`Failed to fetch details for ${conv.conversation_id}:`, e);
+                            }
+                            return transformConversation(conv);
+                        })
+                    );
+
+                    setConversations(detailedConvs);
+                } catch (err) {
+                    console.error('Failed to fetch conversations:', err);
+                    setError(err.message);
+                    // Fall back to mock data on error
+                    setConversations(MOCK_CONVERSATIONS);
+                    setUseMockData(true);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            useEffect(() => {
+                fetchConversations();
+            }, [useMockData]);
 
             const selectedConversation = useMemo(() =>
                 conversations.find(c => c.id === selectedId),
                 [conversations, selectedId]
             );
+
+            const toggleDataSource = () => {
+                setUseMockData(!useMockData);
+            };
 
             return (
                 <div className="h-screen flex">
@@ -772,6 +976,11 @@
                         filter={conversationFilter}
                         search={search}
                         setSearch={setSearch}
+                        loading={loading}
+                        error={error}
+                        onRefresh={fetchConversations}
+                        useMockData={useMockData}
+                        onToggleDataSource={toggleDataSource}
                     />
                     <ConversationDetail conversation={selectedConversation} />
                 </div>
