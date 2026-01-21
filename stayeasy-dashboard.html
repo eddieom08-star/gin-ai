@@ -1412,24 +1412,53 @@
                 // Extract analysis if available
                 const analysis = details.analysis || {};
 
+                // ElevenLabs uses transcript_summary for the AI summary
+                const aiSummary = analysis.transcript_summary || analysis.summary || analysis.call_summary || 'Voice agent conversation.';
+
+                // Extract topics from call_summary_title or generate from summary
+                const extractTopics = () => {
+                    if (analysis.topics && analysis.topics.length > 0) return analysis.topics;
+                    // Generate topics from call_summary_title
+                    if (analysis.call_summary_title) {
+                        return [analysis.call_summary_title.toLowerCase().replace(/\s+/g, '_')];
+                    }
+                    // Extract key topics from summary
+                    const summary = aiSummary.toLowerCase();
+                    const topicKeywords = [];
+                    if (summary.includes('booking') || summary.includes('reservation')) topicKeywords.push('booking_modification');
+                    if (summary.includes('date') || summary.includes('reschedule')) topicKeywords.push('date_change');
+                    if (summary.includes('cancel')) topicKeywords.push('cancellation');
+                    if (summary.includes('check-in') || summary.includes('checkin')) topicKeywords.push('early_checkin');
+                    if (summary.includes('refund') || summary.includes('charge')) topicKeywords.push('billing');
+                    if (summary.includes('room') || summary.includes('upgrade')) topicKeywords.push('room_request');
+                    return topicKeywords.length > 0 ? topicKeywords : ['general_inquiry'];
+                };
+
+                // Map call_successful to outcome
+                const getOutcome = () => {
+                    if (analysis.call_successful === 'success') return 'resolved';
+                    if (analysis.call_successful === 'failure') return 'abandoned';
+                    return mapStatus(conv.status, analysis);
+                };
+
                 return {
                     ...base,
                     messageCount: transcript.length,
                     transcript,
-                    proseSummary: analysis.summary || analysis.call_summary || 'Conversation with voice agent.',
+                    proseSummary: aiSummary,
                     structuredSummary: {
-                        outcome: mapStatus(conv.status, analysis),
+                        outcome: getOutcome(),
                         sentiment: {
                             start: analysis.user_sentiment_start || 'neutral',
-                            end: analysis.user_sentiment_end || analysis.user_sentiment || 'neutral'
+                            end: analysis.user_sentiment_end || analysis.user_sentiment || 'satisfied'
                         },
-                        topics: analysis.topics || analysis.data_collection_results?.topics || ['general_inquiry'],
+                        topics: extractTopics(),
                         actionItems: analysis.action_items || [],
                         followUpRequired: analysis.follow_up_required || false,
                         keyEntities: extractEntities(analysis, details),
-                        summary: analysis.summary || analysis.call_summary || 'Voice agent conversation.'
+                        summary: aiSummary
                     },
-                    // Extract evaluation results from ElevenLabs - check multiple possible locations
+                    // Extract evaluation results from ElevenLabs
                     evaluationResults: extractEvaluationResults(analysis, details)
                 };
             }
@@ -1512,15 +1541,64 @@
 
         const extractEntities = (analysis, details) => {
             const entities = {};
-            if (analysis.data_collection_results) {
+
+            // Extract from data_collection_results object
+            if (analysis.data_collection_results && typeof analysis.data_collection_results === 'object') {
                 Object.entries(analysis.data_collection_results).forEach(([key, value]) => {
                     if (value && typeof value === 'string') {
                         entities[key] = value;
                     }
                 });
             }
-            if (details.agent_id) entities.agent_id = details.agent_id;
+
+            // Also check data_collection_results_list (array format)
+            if (analysis.data_collection_results_list && Array.isArray(analysis.data_collection_results_list)) {
+                analysis.data_collection_results_list.forEach(item => {
+                    if (item.name && item.value) {
+                        entities[item.name] = item.value;
+                    }
+                });
+            }
+
+            // Extract booking details from transcript_summary using patterns
+            const summary = analysis.transcript_summary || analysis.summary || '';
+            if (summary) {
+                // Extract booking reference (BK-XXXXXXX or similar patterns)
+                const bookingMatch = summary.match(/(?:booking|reference|BK[-\s]?)([A-Z0-9-]+)/i);
+                if (bookingMatch && !entities.booking_id) {
+                    entities.booking_id = bookingMatch[1].startsWith('BK') ? bookingMatch[1] : `BK-${bookingMatch[1]}`;
+                }
+
+                // Extract hotel/property name
+                const hotelPatterns = [
+                    /(?:at|for)\s+(?:the\s+)?([A-Z][A-Za-z\s&]+(?:Hotel|Resort|Inn|Spa|Suites))/i,
+                    /(?:Grand|Park|Hilton|Marriott|Hyatt)[A-Za-z\s&]+/i
+                ];
+                for (const pattern of hotelPatterns) {
+                    const match = summary.match(pattern);
+                    if (match && !entities.property) {
+                        entities.property = match[1] || match[0];
+                        break;
+                    }
+                }
+
+                // Extract location
+                const locationMatch = summary.match(/in\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?(?:,\s*[A-Z][a-z]+)?)/);
+                if (locationMatch && !entities.location) {
+                    entities.location = locationMatch[1];
+                }
+
+                // Extract dates
+                const datePattern = /(?:March|April|May|June|July|August|September|October|November|December|January|February)\s+\d{1,2}(?:st|nd|rd|th)?(?:\s*[-–to]+\s*\d{1,2}(?:st|nd|rd|th)?)?/gi;
+                const dates = summary.match(datePattern);
+                if (dates && dates.length > 0) {
+                    if (!entities.dates) entities.dates = dates.join(' to ');
+                }
+            }
+
+            // Add conversation metadata
             if (details.conversation_id) entities.conversation_id = details.conversation_id;
+
             return Object.keys(entities).length > 0 ? entities : { conversation_id: details.conversation_id };
         };
 
