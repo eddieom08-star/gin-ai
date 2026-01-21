@@ -1100,22 +1100,30 @@
         const SummaryPanel = ({ conversation, evaluationCriteria, isCollapsed, onToggleCollapse }) => {
             const { structuredSummary, evaluationResults, proseSummary } = conversation;
 
-            // Generate evaluation results based on criteria using AI analysis
-            // Use custom criteria if provided, otherwise use DEFAULT_CRITERIA for live conversations
-            const criteriaToUse = evaluationCriteria || DEFAULT_CRITERIA;
-            const criteriaBasedResults = criteriaToUse.map(c => {
-                // Check if we have an existing result for this criteria
-                const existing = (evaluationResults || []).find(r => r.criteriaId === c.id || r.criteriaName === c.name);
-                if (existing) return existing;
-                // Evaluate conversation against this criteria
-                const evaluation = evaluateConversation(conversation, c);
-                return {
-                    criteriaId: c.id,
-                    criteriaName: c.name,
-                    passed: evaluation.passed,
-                    reasoning: evaluation.reasoning
-                };
-            });
+            // Determine which evaluation results to display:
+            // 1. If we have API results from ElevenLabs, use those directly
+            // 2. Otherwise, run local evaluation against criteria
+            const hasApiResults = evaluationResults && evaluationResults.length > 0;
+
+            let criteriaBasedResults;
+            if (hasApiResults) {
+                // Use ElevenLabs evaluation results directly
+                criteriaBasedResults = evaluationResults;
+                console.log('Using ElevenLabs API evaluation results:', evaluationResults);
+            } else {
+                // Fall back to local evaluation using criteria
+                const criteriaToUse = evaluationCriteria || DEFAULT_CRITERIA;
+                criteriaBasedResults = criteriaToUse.map(c => {
+                    const evaluation = evaluateConversation(conversation, c);
+                    return {
+                        criteriaId: c.id,
+                        criteriaName: c.name,
+                        passed: evaluation.passed,
+                        reasoning: evaluation.reasoning
+                    };
+                });
+                console.log('Using local evaluation (no API results):', criteriaBasedResults);
+            }
 
             if (isCollapsed) {
                 return (
@@ -1423,12 +1431,8 @@
                         keyEntities: extractEntities(analysis, details),
                         summary: analysis.summary || analysis.call_summary || 'Voice agent conversation.'
                     },
-                    evaluationResults: (analysis.evaluation_results || []).map(er => ({
-                        criteriaId: er.criteria_id || er.id,
-                        criteriaName: er.criteria_name || er.name || 'Evaluation',
-                        passed: er.passed ?? er.result === 'pass',
-                        reasoning: er.reasoning || er.rationale || ''
-                    }))
+                    // Extract evaluation results from ElevenLabs - check multiple possible locations
+                    evaluationResults: extractEvaluationResults(analysis, details)
                 };
             }
 
@@ -1475,6 +1479,35 @@
                 'escalated': 'escalated'
             };
             return statusMap[status?.toLowerCase()] || 'resolved';
+        };
+
+        // Extract evaluation results from ElevenLabs API response
+        // Checks multiple possible field locations based on ElevenLabs API structure
+        const extractEvaluationResults = (analysis, details) => {
+            // Log raw data for debugging (remove in production)
+            console.log('ElevenLabs analysis data:', JSON.stringify(analysis, null, 2));
+            console.log('ElevenLabs details data:', JSON.stringify(details, null, 2));
+
+            // Check multiple possible locations for evaluation data
+            const evalData =
+                analysis.evaluation_criteria_results ||
+                analysis.evaluation_results ||
+                analysis.evaluations ||
+                analysis.call_evaluation ||
+                details.evaluation_criteria_results ||
+                details.evaluation_results ||
+                details.analysis?.evaluation_criteria_results ||
+                [];
+
+            // Handle both array and object formats
+            const evalArray = Array.isArray(evalData) ? evalData : Object.values(evalData);
+
+            return evalArray.map(er => ({
+                criteriaId: er.criteria_id || er.id || er.evaluation_criteria_id || '',
+                criteriaName: er.criteria_name || er.name || er.criteria || 'Evaluation',
+                passed: er.passed ?? er.result === 'success' ?? er.result === 'pass' ?? er.score >= 0.5,
+                reasoning: er.reasoning || er.rationale || er.explanation || er.feedback || ''
+            }));
         };
 
         const extractEntities = (analysis, details) => {
