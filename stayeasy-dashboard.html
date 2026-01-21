@@ -1109,7 +1109,6 @@
             if (hasApiResults) {
                 // Use ElevenLabs evaluation results directly
                 criteriaBasedResults = evaluationResults;
-                console.log('Using ElevenLabs API evaluation results:', evaluationResults);
             } else {
                 // Fall back to local evaluation using criteria
                 const criteriaToUse = evaluationCriteria || DEFAULT_CRITERIA;
@@ -1122,7 +1121,6 @@
                         reasoning: evaluation.reasoning
                     };
                 });
-                console.log('Using local evaluation (no API results):', criteriaBasedResults);
             }
 
             if (isCollapsed) {
@@ -1482,32 +1480,34 @@
         };
 
         // Extract evaluation results from ElevenLabs API response
-        // Checks multiple possible field locations based on ElevenLabs API structure
+        // ElevenLabs returns: evaluation_criteria_results_list (array) or evaluation_criteria_results (object)
         const extractEvaluationResults = (analysis, details) => {
-            // Log raw data for debugging (remove in production)
-            console.log('ElevenLabs analysis data:', JSON.stringify(analysis, null, 2));
-            console.log('ElevenLabs details data:', JSON.stringify(details, null, 2));
+            // Prefer the list format, fall back to object format
+            let evalArray = analysis.evaluation_criteria_results_list || [];
 
-            // Check multiple possible locations for evaluation data
-            const evalData =
-                analysis.evaluation_criteria_results ||
-                analysis.evaluation_results ||
-                analysis.evaluations ||
-                analysis.call_evaluation ||
-                details.evaluation_criteria_results ||
-                details.evaluation_results ||
-                details.analysis?.evaluation_criteria_results ||
-                [];
+            // If list is empty, try the object format
+            if (evalArray.length === 0 && analysis.evaluation_criteria_results) {
+                const obj = analysis.evaluation_criteria_results;
+                if (typeof obj === 'object' && Object.keys(obj).length > 0) {
+                    evalArray = Object.values(obj);
+                }
+            }
 
-            // Handle both array and object formats
-            const evalArray = Array.isArray(evalData) ? evalData : Object.values(evalData);
+            // Map ElevenLabs format to our format
+            // ElevenLabs uses: criteria_id, result ("success"/"failure"), rationale
+            return evalArray.map(er => {
+                // Convert criteria_id to readable name (e.g., "issue_resolved" -> "Issue Resolved")
+                const criteriaName = er.criteria_id
+                    ? er.criteria_id.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+                    : 'Evaluation';
 
-            return evalArray.map(er => ({
-                criteriaId: er.criteria_id || er.id || er.evaluation_criteria_id || '',
-                criteriaName: er.criteria_name || er.name || er.criteria || 'Evaluation',
-                passed: er.passed ?? er.result === 'success' ?? er.result === 'pass' ?? er.score >= 0.5,
-                reasoning: er.reasoning || er.rationale || er.explanation || er.feedback || ''
-            }));
+                return {
+                    criteriaId: er.criteria_id || '',
+                    criteriaName: criteriaName,
+                    passed: er.result === 'success',
+                    reasoning: er.rationale || ''
+                };
+            });
         };
 
         const extractEntities = (analysis, details) => {
