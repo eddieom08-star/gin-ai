@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>gin-ai - Voice Agent Dashboard</title>
+    <title>StayEasy - Voice Agent Dashboard</title>
     <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -44,7 +44,7 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
 
-        // Mock Data
+        // StayEasy Mock Data - Travel Booking Conversations
         const MOCK_CONVERSATIONS = [
             {
                 id: "conv-001",
@@ -54,34 +54,37 @@
                 channel: "voice",
                 status: "successful",
                 transcript: [
-                    { role: "agent", content: "Hello, thank you for calling TechStore support. How can I help you today?", timestamp: "00:00" },
-                    { role: "customer", content: "Yeah, I'm really frustrated. I ordered a laptop three weeks ago and it still hasn't arrived. Order number 4521.", timestamp: "00:05" },
-                    { role: "agent", content: "I'm sorry to hear about the delay with your order. Let me look into that for you right away. Can you confirm the email address on your account?", timestamp: "00:15" },
-                    { role: "customer", content: "It's john.smith@email.com", timestamp: "00:22" },
-                    { role: "agent", content: "Thank you, John. I can see your order #4521 here. It looks like there was a shipping delay due to a warehouse issue. I sincerely apologize for this inconvenience.", timestamp: "00:30" },
-                    { role: "customer", content: "This is unacceptable. I needed this laptop for work.", timestamp: "00:45" },
-                    { role: "agent", content: "I completely understand your frustration, and you're right to be upset. Let me see what I can do to make this right. I can confirm your laptop shipped yesterday and will arrive by Tuesday.", timestamp: "00:52" },
-                    { role: "customer", content: "Tuesday? That's still five more days.", timestamp: "01:05" },
-                    { role: "agent", content: "You're right, and I want to make this up to you. I'm applying a 15% discount to your order, and I'm also adding a $25 credit to your account for your next purchase. Would that help?", timestamp: "01:12" },
-                    { role: "customer", content: "Well... okay, I guess that's fair. You're sure it will arrive Tuesday?", timestamp: "01:35" },
-                    { role: "agent", content: "Absolutely. I've flagged your order for priority handling and you'll receive tracking updates via email. Is there anything else I can help with today?", timestamp: "01:42" },
-                    { role: "customer", content: "No, that's fine. Thanks for sorting it out.", timestamp: "02:00" },
-                    { role: "agent", content: "Thank you for your patience, John. Have a great day!", timestamp: "02:05" }
+                    { role: "agent", content: "Hello, welcome to StayEasy. I'm your booking assistant. How can I help you today?", timestamp: "00:00" },
+                    { role: "customer", content: "Hi, I need to change the dates on my Barcelona hotel booking. Something came up at work.", timestamp: "00:06" },
+                    { role: "agent", content: "I'd be happy to help you change your dates. Can you give me your booking confirmation number?", timestamp: "00:14" },
+                    { role: "customer", content: "It's BK-8847291. The Grand Marina Hotel.", timestamp: "00:22" },
+                    { role: "agent", content: "I found your booking at Grand Marina Hotel & Spa in Barcelona, currently scheduled for March 15th to 18th. What dates would you like to change to?", timestamp: "00:30" },
+                    { role: "customer", content: "I need to push it back a week. So March 22nd to 25th if possible.", timestamp: "00:42" },
+                    { role: "agent", content: "Let me check availability for those dates... Great news! The Deluxe Sea View room is available March 22nd to 25th. The rate is actually €15 per night less than your original booking.", timestamp: "00:52" },
+                    { role: "customer", content: "Oh nice! So it'll be cheaper?", timestamp: "01:10" },
+                    { role: "agent", content: "Yes, your new total would be €612 instead of €657. That's a savings of €45. Would you like me to make this change?", timestamp: "01:16" },
+                    { role: "customer", content: "Yes, please do that.", timestamp: "01:30" },
+                    { role: "agent", content: "I've updated your reservation. Your new dates are March 22nd to 25th, 2025 at Grand Marina Hotel & Spa. You'll receive an updated confirmation email shortly. Is there anything else I can help with?", timestamp: "01:38" },
+                    { role: "customer", content: "Actually, can I also request early check-in? My flight lands at 9am.", timestamp: "01:55" },
+                    { role: "agent", content: "I've added an early check-in request to your booking. Standard check-in is 3pm, but I've noted your 9am arrival. The hotel will do their best to accommodate you and will confirm closer to your arrival date.", timestamp: "02:05" },
+                    { role: "customer", content: "Perfect, thank you so much!", timestamp: "02:25" },
+                    { role: "agent", content: "You're welcome! Have a wonderful trip to Barcelona. Is there anything else?", timestamp: "02:30" },
+                    { role: "customer", content: "No, that's all. Thanks!", timestamp: "02:40" }
                 ],
-                proseSummary: "The customer called about a delayed order #4521 for a laptop that was three weeks overdue. The agent identified a warehouse shipping issue and confirmed the item shipped yesterday with Tuesday delivery. Customer was initially frustrated but accepted the resolution after the agent offered a 15% discount on the order and a $25 account credit. No follow-up action required.",
+                proseSummary: "Customer requested date change for Grand Marina Hotel booking BK-8847291 in Barcelona. Original dates March 15-18 changed to March 22-25. New dates resulted in €45 savings (€657 to €612). Customer also requested early check-in due to 9am flight arrival. Both requests completed successfully.",
                 structuredSummary: {
                     outcome: "resolved",
-                    sentiment: { start: "frustrated", end: "satisfied" },
-                    topics: ["delivery_delay", "order_status", "compensation"],
+                    sentiment: { start: "neutral", end: "satisfied" },
+                    topics: ["date_change", "booking_modification", "early_checkin", "special_request"],
                     actionItems: [],
                     followUpRequired: false,
-                    keyEntities: { "order_id": "4521", "discount_applied": "15%", "account_credit": "$25", "expected_delivery": "Tuesday" },
-                    summary: "Delayed laptop order resolved with delivery confirmation (Tuesday) plus 15% discount and $25 credit."
+                    keyEntities: { "booking_id": "BK-8847291", "property": "Grand Marina Hotel & Spa", "location": "Barcelona, Spain", "original_dates": "March 15-18, 2025", "new_dates": "March 22-25, 2025", "price_change": "-€45", "new_total": "€612", "special_request": "Early check-in (9am arrival)" },
+                    summary: "Date change completed with €45 savings. Early check-in request added for 9am flight arrival."
                 },
                 evaluationResults: [
-                    { criteriaId: "crit-001", criteriaName: "Issue Resolution", passed: true, reasoning: "Customer's primary concern about delayed delivery was fully addressed." },
-                    { criteriaId: "crit-002", criteriaName: "Empathy & Tone", passed: true, reasoning: "Agent acknowledged customer's frustration multiple times, apologized sincerely." },
-                    { criteriaId: "crit-003", criteriaName: "Compliance Adherence", passed: true, reasoning: "Agent followed proper verification procedures." }
+                    { criteriaId: "crit-001", criteriaName: "Issue Resolution", passed: true, reasoning: "Both customer requests (date change and early check-in) were fully completed. Customer confirmed satisfaction." },
+                    { criteriaId: "crit-002", criteriaName: "Empathy & Tone", passed: true, reasoning: "Agent was helpful and proactive, highlighting the cost savings without being prompted. Wished customer a wonderful trip." },
+                    { criteriaId: "crit-003", criteriaName: "Booking Accuracy", passed: true, reasoning: "Agent confirmed all booking details (property, dates, room type) before making changes. Verified new total and sent confirmation email." }
                 ]
             },
             {
@@ -92,37 +95,38 @@
                 channel: "voice",
                 status: "successful",
                 transcript: [
-                    { role: "agent", content: "Thank you for calling TechStore. How can I assist you?", timestamp: "00:00" },
-                    { role: "customer", content: "Hi, I'm having trouble connecting my new smart speaker to my WiFi. I've tried everything.", timestamp: "00:08" },
-                    { role: "agent", content: "I'd be happy to help you with that. Can you tell me which model you have?", timestamp: "00:18" },
-                    { role: "customer", content: "It's the SoundMax Pro 3000.", timestamp: "00:25" },
-                    { role: "agent", content: "Great choice! Let's troubleshoot this together. First, can you confirm the speaker is in pairing mode? There should be a blinking blue light.", timestamp: "00:32" },
-                    { role: "customer", content: "Yes, it's blinking blue.", timestamp: "00:45" },
-                    { role: "agent", content: "Perfect. Now, on your phone, go to Settings, then WiFi. Do you see a network called 'SoundMax-Setup'?", timestamp: "00:52" },
-                    { role: "customer", content: "Um... no, I don't see it.", timestamp: "01:15" },
-                    { role: "agent", content: "Let's try resetting the speaker. Hold the power button for 15 seconds until you hear a chime.", timestamp: "01:22" },
-                    { role: "customer", content: "Okay, doing that now... I heard the chime.", timestamp: "01:45" },
-                    { role: "agent", content: "Excellent. Now the blue light should blink faster. Check your WiFi networks again.", timestamp: "01:52" },
-                    { role: "customer", content: "Oh! I see it now - SoundMax-Setup is there!", timestamp: "02:10" },
-                    { role: "agent", content: "Great progress! Connect to that network, then open the SoundMax app. It should guide you through the rest.", timestamp: "02:18" },
-                    { role: "customer", content: "It's playing! Thank you so much, I was so frustrated with this.", timestamp: "03:45" },
-                    { role: "agent", content: "You're very welcome! Is there anything else I can help you with today?", timestamp: "03:52" },
-                    { role: "customer", content: "No, that's all. Thanks again!", timestamp: "04:00" }
+                    { role: "agent", content: "Hi, thank you for calling StayEasy. How can I assist you?", timestamp: "00:00" },
+                    { role: "customer", content: "I need to cancel my Paris booking but I'm worried about the cancellation fee. I booked a non-refundable rate.", timestamp: "00:08" },
+                    { role: "agent", content: "I understand. Let me look into your booking. What's your confirmation number?", timestamp: "00:18" },
+                    { role: "customer", content: "BK-9923847. It's the Ritz Carlton for April.", timestamp: "00:26" },
+                    { role: "agent", content: "I found your booking at The Ritz Carlton Paris, April 10th to 14th. I see this was booked at our non-refundable rate. Can you tell me the reason for cancellation?", timestamp: "00:38" },
+                    { role: "customer", content: "My father was just diagnosed with cancer. We need to be with family right now, not traveling.", timestamp: "00:52" },
+                    { role: "agent", content: "I'm so sorry to hear about your father. That must be incredibly difficult for your family. Let me see what options we have for you given these circumstances.", timestamp: "01:05" },
+                    { role: "customer", content: "I really can't afford to lose €2,400. That's a lot of money right now.", timestamp: "01:22" },
+                    { role: "agent", content: "I completely understand. For medical emergencies, we do have a compassionate cancellation policy. With documentation from your father's doctor, we can offer you a full refund or credit for future travel. Which would you prefer?", timestamp: "01:35" },
+                    { role: "customer", content: "Oh my god, really? A full refund would be amazing. What documentation do you need?", timestamp: "02:00" },
+                    { role: "agent", content: "We'll need a letter from the treating physician confirming the diagnosis and that travel is not advisable for family members. You can upload this through your StayEasy account or email it to compassionate@stayeasy.com.", timestamp: "02:12" },
+                    { role: "customer", content: "I can get that. How long does the refund take?", timestamp: "02:35" },
+                    { role: "agent", content: "Once we receive the documentation, refunds are processed within 5-7 business days. I'm putting your booking on hold now so it won't auto-charge. You have 14 days to submit the documentation.", timestamp: "02:45" },
+                    { role: "customer", content: "Thank you so much. I was dreading this call.", timestamp: "03:10" },
+                    { role: "agent", content: "Please don't mention it. I hope your father's treatment goes well. We'll be here when you're ready to travel again. Is there anything else I can help with?", timestamp: "03:20" },
+                    { role: "customer", content: "No, you've been wonderful. Thank you.", timestamp: "03:45" }
                 ],
-                proseSummary: "Customer called for help connecting SoundMax Pro 3000 smart speaker to WiFi. Initial setup network wasn't visible. Agent guided customer through device reset which resolved the issue. Speaker successfully connected and playing music.",
+                proseSummary: "Customer requested cancellation of non-refundable Ritz Carlton Paris booking (BK-9923847, €2,400) due to father's cancer diagnosis. Agent applied compassionate cancellation policy offering full refund pending medical documentation. Booking placed on hold, 14-day window for documentation submission. Refund to process within 5-7 business days after receipt.",
                 structuredSummary: {
                     outcome: "resolved",
                     sentiment: { start: "frustrated", end: "satisfied" },
-                    topics: ["technical_support", "device_setup", "wifi_connectivity"],
-                    actionItems: [],
-                    followUpRequired: false,
-                    keyEntities: { "product": "SoundMax Pro 3000", "issue_type": "WiFi connectivity", "resolution": "Device reset" },
-                    summary: "WiFi connectivity issue with SoundMax Pro 3000 resolved via device reset and guided setup."
+                    topics: ["cancellation", "refund_request", "compassionate_policy", "medical_emergency"],
+                    actionItems: ["Customer to submit medical documentation within 14 days", "Process refund upon documentation receipt"],
+                    followUpRequired: true,
+                    keyEntities: { "booking_id": "BK-9923847", "property": "The Ritz Carlton Paris", "location": "Paris, France", "dates": "April 10-14, 2025", "refund_amount": "€2,400", "policy_applied": "Compassionate cancellation", "documentation_deadline": "14 days", "documentation_email": "compassionate@stayeasy.com" },
+                    summary: "Non-refundable booking eligible for full refund under compassionate policy. Awaiting medical documentation."
                 },
                 evaluationResults: [
-                    { criteriaId: "crit-001", criteriaName: "Issue Resolution", passed: true, reasoning: "Technical issue was fully resolved. Customer confirmed speaker is connected and playing music." },
-                    { criteriaId: "crit-002", criteriaName: "Empathy & Tone", passed: true, reasoning: "Agent maintained patient, encouraging tone throughout troubleshooting." },
-                    { criteriaId: "crit-003", criteriaName: "Compliance Adherence", passed: true, reasoning: "Agent followed standard troubleshooting protocol." }
+                    { criteriaId: "crit-001", criteriaName: "Issue Resolution", passed: true, reasoning: "Customer's concern about losing €2,400 was addressed with compassionate policy solution. Clear next steps provided." },
+                    { criteriaId: "crit-002", criteriaName: "Empathy & Tone", passed: true, reasoning: "Agent expressed genuine sympathy, acknowledged difficulty of situation, and wished father well. Customer explicitly noted agent was 'wonderful'." },
+                    { criteriaId: "crit-003", criteriaName: "Booking Accuracy", passed: true, reasoning: "Agent correctly identified booking as non-refundable, applied appropriate exception policy, and clearly communicated process and timelines." },
+                    { criteriaId: "crit-005", criteriaName: "Policy Application", passed: true, reasoning: "Agent correctly applied compassionate cancellation policy for medical emergency. Placed booking on hold to prevent charges." }
                 ]
             },
             {
@@ -133,30 +137,29 @@
                 channel: "chat",
                 status: "successful",
                 transcript: [
-                    { role: "agent", content: "Hi! Welcome to TechStore support. How can I help you today?", timestamp: "00:00" },
-                    { role: "customer", content: "I need to return a keyboard I bought last week. It's not working properly.", timestamp: "00:12" },
-                    { role: "agent", content: "I'm sorry to hear the keyboard isn't working well. I can help with that return. Could you provide your order number?", timestamp: "00:20" },
-                    { role: "customer", content: "Order #7823", timestamp: "00:35" },
-                    { role: "agent", content: "Thank you. I can see your MechType Pro keyboard order from January 13th. Since it's within our 30-day return window and appears to be defective, I'm generating a prepaid return label for you now.", timestamp: "00:45" },
-                    { role: "customer", content: "Great, how long until I get my refund?", timestamp: "01:02" },
-                    { role: "agent", content: "Once we receive the keyboard, your refund will process within 3-5 business days. I've sent the return label to your email. Would you like a replacement keyboard instead of a refund?", timestamp: "01:10" },
-                    { role: "customer", content: "No, just the refund please. Thanks for making this easy.", timestamp: "01:25" },
-                    { role: "agent", content: "You're welcome! The return label is on its way. Is there anything else I can help with?", timestamp: "01:30" }
+                    { role: "agent", content: "Hi! I'm your StayEasy booking assistant. How can I help?", timestamp: "00:00" },
+                    { role: "customer", content: "Need to add my wife to my Dubai booking. Forgot to include her when I booked.", timestamp: "00:12" },
+                    { role: "agent", content: "No problem! I can add a guest to your booking. What's your confirmation number?", timestamp: "00:20" },
+                    { role: "customer", content: "BK-7756123 - Burj Al Arab", timestamp: "00:32" },
+                    { role: "agent", content: "Found it! Burj Al Arab, May 20-25, currently showing 1 adult in a Deluxe Suite. I'll update this to 2 adults. What's your wife's full name as it appears on her passport?", timestamp: "00:42" },
+                    { role: "customer", content: "Sarah Elizabeth Thompson", timestamp: "00:58" },
+                    { role: "agent", content: "I've added Sarah Elizabeth Thompson to your booking. The suite accommodates 2 adults so there's no additional charge. Your updated confirmation has been sent to your email. Anything else?", timestamp: "01:08" },
+                    { role: "customer", content: "That's it, thanks!", timestamp: "01:25" }
                 ],
-                proseSummary: "Customer requested return for defective MechType Pro keyboard from order #7823. Agent verified order within return window and generated prepaid return label. Customer opted for refund over replacement.",
+                proseSummary: "Customer requested to add spouse (Sarah Elizabeth Thompson) to Burj Al Arab Dubai booking BK-7756123 for May 20-25. Guest added to existing Deluxe Suite with no additional charge. Updated confirmation sent.",
                 structuredSummary: {
                     outcome: "resolved",
                     sentiment: { start: "neutral", end: "satisfied" },
-                    topics: ["returns", "defective_product", "refund"],
+                    topics: ["add_guest", "booking_modification"],
                     actionItems: [],
                     followUpRequired: false,
-                    keyEntities: { "order_id": "7823", "product": "MechType Pro keyboard", "return_reason": "Defective", "refund_timeline": "3-5 business days" },
-                    summary: "Defective keyboard return processed. Prepaid label sent, refund in 3-5 days after receipt."
+                    keyEntities: { "booking_id": "BK-7756123", "property": "Burj Al Arab", "location": "Dubai, UAE", "dates": "May 20-25, 2025", "room_type": "Deluxe Suite", "guest_added": "Sarah Elizabeth Thompson", "additional_charge": "None" },
+                    summary: "Added spouse to Dubai booking. No additional charge for suite occupancy."
                 },
                 evaluationResults: [
-                    { criteriaId: "crit-001", criteriaName: "Issue Resolution", passed: true, reasoning: "Return request fully processed. Customer received return label and clear timeline for refund." },
-                    { criteriaId: "crit-002", criteriaName: "Empathy & Tone", passed: true, reasoning: "Agent apologized for the product issue and made the process efficient." },
-                    { criteriaId: "crit-003", criteriaName: "Compliance Adherence", passed: true, reasoning: "Agent verified return window eligibility and offered replacement before refund as per policy." }
+                    { criteriaId: "crit-001", criteriaName: "Issue Resolution", passed: true, reasoning: "Guest added successfully, confirmation sent. Simple request handled efficiently." },
+                    { criteriaId: "crit-002", criteriaName: "Empathy & Tone", passed: true, reasoning: "Agent was helpful and proactive in explaining no additional charge would apply." },
+                    { criteriaId: "crit-003", criteriaName: "Booking Accuracy", passed: true, reasoning: "Agent verified booking details and collected guest's full passport name correctly." }
                 ]
             },
             {
@@ -165,66 +168,66 @@
                 duration: "3:28",
                 messageCount: 15,
                 channel: "voice",
-                status: "failed",
+                status: "successful",
                 transcript: [
-                    { role: "agent", content: "Hello, thank you for calling TechStore. How may I help you?", timestamp: "00:00" },
-                    { role: "customer", content: "I need to dispute a charge on my account. I was charged twice for the same order.", timestamp: "00:10" },
-                    { role: "agent", content: "I apologize for that inconvenience. I can look into that for you. May I have your account email?", timestamp: "00:18" },
-                    { role: "customer", content: "sarah.jones@email.com", timestamp: "00:28" },
-                    { role: "agent", content: "Thank you, Sarah. I can see your recent orders. Which charge would you like me to investigate?", timestamp: "00:38" },
-                    { role: "customer", content: "The order from January 15th - I was charged $249.99 twice. That's almost $500 taken from my account!", timestamp: "00:50" },
-                    { role: "agent", content: "I understand how concerning that must be. Let me check the transaction details... I can see the two charges, but I'm unable to process refunds for billing disputes. I'll need to transfer you to our billing department.", timestamp: "01:15" },
-                    { role: "customer", content: "Are you serious? I've been on hold for 20 minutes already!", timestamp: "01:35" },
-                    { role: "agent", content: "I sincerely apologize for the wait and the inconvenience. Unfortunately, I don't have access to process refunds directly. The billing team will be able to resolve this immediately.", timestamp: "01:48" },
-                    { role: "customer", content: "Fine. How long will I have to wait?", timestamp: "02:10" },
-                    { role: "agent", content: "Current wait times for billing are approximately 10 minutes. I'll add a priority note to your case so they have all the context.", timestamp: "02:20" },
-                    { role: "customer", content: "This is ridiculous but fine, transfer me.", timestamp: "02:45" },
-                    { role: "agent", content: "I'm transferring you now. I've included all the details about the duplicate charge. Thank you for your patience, Sarah.", timestamp: "02:55" }
+                    { role: "agent", content: "Hello, thank you for calling StayEasy. How may I help you?", timestamp: "00:00" },
+                    { role: "customer", content: "I'm at the hotel right now and they're saying they don't have my reservation! This is a nightmare!", timestamp: "00:08" },
+                    { role: "agent", content: "Oh no, I'm so sorry you're experiencing this. Let me help sort this out immediately. What's your booking confirmation number?", timestamp: "00:18" },
+                    { role: "customer", content: "BK-5543298. I have the confirmation email right here. Amsterdam Marriott, checking in today!", timestamp: "00:28" },
+                    { role: "agent", content: "I can see your booking BK-5543298 for the Amsterdam Marriott, January 20th to 23rd. It shows as confirmed on our end. Let me contact the hotel directly to resolve this.", timestamp: "00:42" },
+                    { role: "customer", content: "I've been standing at this desk for 30 minutes. My kids are exhausted from the flight.", timestamp: "01:00" },
+                    { role: "agent", content: "I completely understand how stressful this is, especially with children. I'm calling the hotel's reservation manager now. Can you please hold for just a moment?", timestamp: "01:12" },
+                    { role: "customer", content: "Fine, but please hurry.", timestamp: "01:28" },
+                    { role: "agent", content: "Thank you for holding. I spoke with the hotel manager. There was a system sync error on their end - your booking didn't transfer to their local system. They've found your reservation now and are preparing your room.", timestamp: "02:15" },
+                    { role: "customer", content: "So I can check in now?", timestamp: "02:30" },
+                    { role: "agent", content: "Yes, please go back to the front desk and ask for the duty manager, Pieter. He's expecting you and will check you in personally. They're also upgrading you to a premium room for the inconvenience.", timestamp: "02:42" },
+                    { role: "customer", content: "Okay... thank you for fixing this. I was really panicking.", timestamp: "03:00" },
+                    { role: "agent", content: "You're very welcome. I'm also adding a €50 StayEasy credit to your account for the trouble. I'm so sorry this happened. Please reach out if you have any other issues during your stay.", timestamp: "03:10" }
                 ],
-                proseSummary: "Customer reported duplicate charge of $249.99 on January 15th order. Agent verified charges but lacked authorization to process billing disputes. Customer was frustrated about wait time and need for transfer. Agent transferred to billing department with case notes and priority flag.",
+                proseSummary: "Customer arrived at Amsterdam Marriott to find reservation missing from hotel system despite valid StayEasy confirmation BK-5543298. Agent contacted hotel directly, identified system sync error. Hotel found reservation, customer directed to duty manager Pieter for personal check-in. Room upgrade provided plus €50 StayEasy credit for inconvenience.",
                 structuredSummary: {
-                    outcome: "handed_over",
-                    sentiment: { start: "frustrated", end: "frustrated" },
-                    topics: ["billing_dispute", "duplicate_charge", "refund_request"],
-                    actionItems: ["Billing team to process refund for duplicate charge", "Verify customer bank statement after resolution"],
+                    outcome: "resolved",
+                    sentiment: { start: "frustrated", end: "satisfied" },
+                    topics: ["missing_reservation", "hotel_issue", "system_error", "compensation"],
+                    actionItems: ["Monitor for similar sync issues with Amsterdam Marriott", "Follow up on customer stay experience"],
                     followUpRequired: true,
-                    keyEntities: { "customer_email": "sarah.jones@email.com", "charge_amount": "$249.99", "charge_date": "January 15th", "issue": "Duplicate charge" },
-                    summary: "Duplicate charge dispute transferred to billing. Customer frustrated about wait time."
+                    keyEntities: { "booking_id": "BK-5543298", "property": "Amsterdam Marriott", "location": "Amsterdam, Netherlands", "dates": "January 20-23, 2026", "issue": "System sync error - reservation not in hotel system", "resolution": "Manual check-in with duty manager", "compensation": "Room upgrade + €50 credit", "hotel_contact": "Pieter (Duty Manager)" },
+                    summary: "Missing reservation resolved via direct hotel contact. Customer received room upgrade and €50 credit."
                 },
                 evaluationResults: [
-                    { criteriaId: "crit-001", criteriaName: "Issue Resolution", passed: false, reasoning: "Issue was not resolved during conversation. Customer had to be transferred to billing department." },
-                    { criteriaId: "crit-002", criteriaName: "Empathy & Tone", passed: true, reasoning: "Agent acknowledged frustration, apologized multiple times, and explained limitations clearly." },
-                    { criteriaId: "crit-003", criteriaName: "Compliance Adherence", passed: true, reasoning: "Agent correctly identified authorization limits and transferred to appropriate department." },
-                    { criteriaId: "crit-004", criteriaName: "Handover Quality", passed: true, reasoning: "Agent provided complete context for transfer including duplicate charge details and added priority flag." }
+                    { criteriaId: "crit-001", criteriaName: "Issue Resolution", passed: true, reasoning: "Critical issue resolved in real-time. Customer was able to check in with upgraded room." },
+                    { criteriaId: "crit-002", criteriaName: "Empathy & Tone", passed: true, reasoning: "Agent acknowledged stress, especially with children involved. Acted with urgency and provided compensation without being asked." },
+                    { criteriaId: "crit-003", criteriaName: "Booking Accuracy", passed: true, reasoning: "Agent verified booking existed in StayEasy system before escalating to hotel. Correctly identified root cause." },
+                    { criteriaId: "crit-006", criteriaName: "Escalation Handling", passed: true, reasoning: "Agent appropriately escalated by contacting hotel directly. Provided specific instructions for customer (duty manager name)." }
                 ]
             },
             {
                 id: "conv-005",
                 date: "2026-01-20T10:20:00Z",
                 duration: "0:52",
-                messageCount: 5,
+                messageCount: 4,
                 channel: "chat",
                 status: "failed",
                 transcript: [
                     { role: "agent", content: "Hello! How can I help you today?", timestamp: "00:00" },
-                    { role: "customer", content: "Cancel my subscription", timestamp: "00:15" },
-                    { role: "agent", content: "I can help you with that. Before I process the cancellation, may I ask what's prompting you to cancel? We may be able to address any concerns.", timestamp: "00:22" },
+                    { role: "customer", content: "I want to cancel everything", timestamp: "00:12" },
+                    { role: "agent", content: "I can help you with cancellation. Could you please provide your booking confirmation number so I can look up your reservation?", timestamp: "00:20" },
                     { role: "customer", content: "...", timestamp: "00:45" }
                 ],
-                proseSummary: "Customer requested subscription cancellation but abandoned the conversation before providing account details or explaining reason for cancellation. No action was taken.",
+                proseSummary: "Customer requested to cancel 'everything' but abandoned conversation before providing booking details. No action taken. Customer may have multiple bookings requiring cancellation.",
                 structuredSummary: {
                     outcome: "abandoned",
-                    sentiment: { start: "neutral", end: "neutral" },
-                    topics: ["subscription_cancellation"],
-                    actionItems: ["Send follow-up email about cancellation request", "Consider retention offer"],
+                    sentiment: { start: "frustrated", end: "frustrated" },
+                    topics: ["cancellation"],
+                    actionItems: ["Send follow-up email asking if cancellation help still needed", "Check if customer has multiple active bookings"],
                     followUpRequired: true,
-                    keyEntities: { "request_type": "Subscription cancellation" },
-                    summary: "Customer abandoned chat before completing cancellation request. Follow-up recommended."
+                    keyEntities: { "request_type": "Full cancellation (details unknown)" },
+                    summary: "Customer abandoned chat before providing booking details for cancellation request."
                 },
                 evaluationResults: [
-                    { criteriaId: "crit-001", criteriaName: "Issue Resolution", passed: false, reasoning: "Customer's cancellation request was not processed. Conversation abandoned before completion." },
-                    { criteriaId: "crit-002", criteriaName: "Empathy & Tone", passed: false, reasoning: "Agent's retention question may have caused abandonment." },
-                    { criteriaId: "crit-003", criteriaName: "Compliance Adherence", passed: true, reasoning: "Agent followed retention script by asking reason for cancellation before processing." }
+                    { criteriaId: "crit-001", criteriaName: "Issue Resolution", passed: false, reasoning: "Customer's cancellation request was not fulfilled. Conversation abandoned before booking details obtained." },
+                    { criteriaId: "crit-002", criteriaName: "Empathy & Tone", passed: false, reasoning: "Agent response was functional but lacked warmth. 'I want to cancel everything' suggested distress that wasn't acknowledged." },
+                    { criteriaId: "crit-003", criteriaName: "Booking Accuracy", passed: true, reasoning: "Agent correctly requested booking confirmation before proceeding. N/A for accuracy as no booking was accessed." }
                 ]
             },
             {
@@ -235,37 +238,37 @@
                 channel: "voice",
                 status: "failed",
                 transcript: [
-                    { role: "agent", content: "Thank you for calling TechStore support. How can I help?", timestamp: "00:00" },
-                    { role: "customer", content: "I want to speak to a manager right now. Your company charged me for a warranty I never signed up for!", timestamp: "00:08" },
-                    { role: "agent", content: "I'm sorry to hear you're upset. I'd like to help resolve this for you. Can you tell me more about the charge you're seeing?", timestamp: "00:18" },
-                    { role: "customer", content: "I don't want to explain it again! I've called three times already. Just get me a manager.", timestamp: "00:30" },
-                    { role: "agent", content: "I understand you've had to call multiple times and that's frustrating. Let me pull up your account and see what's been documented from your previous calls.", timestamp: "00:42" },
-                    { role: "customer", content: "Why should I trust that you'll actually help? The last two agents said the same thing.", timestamp: "01:00" },
-                    { role: "agent", content: "That's a fair concern. I can see from your account history that there's been an ongoing issue with a $89 extended warranty charge. I want to resolve this for you today.", timestamp: "01:15" },
-                    { role: "customer", content: "I never agreed to any warranty! This is fraud!", timestamp: "01:30" },
-                    { role: "agent", content: "I can see how you'd feel that way, and I want to make this right. Looking at the records, it appears the warranty was added during checkout on December 5th, but I don't see a confirmation click.", timestamp: "01:48" },
-                    { role: "customer", content: "Because I never clicked it! Your website added it automatically!", timestamp: "02:05" },
-                    { role: "agent", content: "I believe you. This looks like a system error on our end. I'm escalating this to our senior support team who has the authority to refund and investigate the checkout flow.", timestamp: "02:22" },
-                    { role: "customer", content: "Finally someone who believes me. How long will this take?", timestamp: "02:45" },
-                    { role: "agent", content: "A senior specialist will call you back within 2 hours. They'll have full authority to issue the refund and provide additional compensation for your trouble.", timestamp: "02:58" },
-                    { role: "customer", content: "It better be today. I've wasted hours on this.", timestamp: "03:20" },
-                    { role: "agent", content: "Absolutely, you'll hear back today. I'm flagging this as urgent and documenting everything so you won't have to repeat yourself again.", timestamp: "03:30" }
+                    { role: "agent", content: "Thank you for calling StayEasy. How can I help?", timestamp: "00:00" },
+                    { role: "customer", content: "I've been charged twice for my Tokyo hotel! Two charges of $3,200 on my credit card!", timestamp: "00:10" },
+                    { role: "agent", content: "I'm so sorry to hear about the duplicate charge. That should not have happened. Let me look into this right away. What's your booking reference?", timestamp: "00:20" },
+                    { role: "customer", content: "BK-4421987. Park Hyatt Tokyo. I only have one booking but you've taken $6,400 from my account!", timestamp: "00:32" },
+                    { role: "agent", content: "I can see your booking for Park Hyatt Tokyo, March 1st to 5th. Let me check the payment records... I do see two charges processed on January 15th. This appears to be a system error.", timestamp: "00:50" },
+                    { role: "customer", content: "A system error?! That's $3,200 of MY money! I need it back now, I have bills to pay!", timestamp: "01:10" },
+                    { role: "agent", content: "I completely understand. This is unacceptable and I want to get this resolved immediately. Unfortunately, I don't have direct access to process refunds. I need to transfer you to our payments team who can initiate the refund right away.", timestamp: "01:25" },
+                    { role: "customer", content: "Are you kidding me? I've been on hold for 45 minutes already to reach you!", timestamp: "01:45" },
+                    { role: "agent", content: "I know, and I'm truly sorry for the wait and for this entire situation. What I can do is create a priority case and have the payments team call you back within 1 hour, rather than you waiting on hold again. Would that work?", timestamp: "02:00" },
+                    { role: "customer", content: "I guess that's better than more hold time. But I want this fixed TODAY.", timestamp: "02:25" },
+                    { role: "agent", content: "Absolutely. I'm creating an urgent case right now. I'm documenting that this is a duplicate charge of $3,200 that needs immediate refund. The payments team will call you within 60 minutes. Can I confirm your callback number?", timestamp: "02:38" },
+                    { role: "customer", content: "+1-555-234-8976", timestamp: "03:00" },
+                    { role: "agent", content: "Got it. I've also flagged this as a high-priority financial impact case. You should receive a call from our payments manager, and they have full authority to process the refund. Is there anything else I can note on the case?", timestamp: "03:12" },
+                    { role: "customer", content: "Just make sure they actually call. This has been a disaster.", timestamp: "03:35" },
+                    { role: "agent", content: "I've set a personal reminder to follow up if you haven't been contacted within the hour. I'm so sorry again for this experience.", timestamp: "03:45" }
                 ],
-                proseSummary: "Customer escalation regarding unauthorized $89 extended warranty charge. Customer had called three times previously without resolution. Agent identified potential checkout system error where warranty was added without confirmation click. Escalated to senior support team for refund authority and investigation. Callback promised within 2 hours.",
+                proseSummary: "Customer reported duplicate charge of $3,200 for Park Hyatt Tokyo booking BK-4421987 (total erroneous charge: $6,400). Agent confirmed system error but lacked refund processing authority. Created priority case for payments team callback within 1 hour. Customer callback number: +1-555-234-8976. Agent set personal follow-up reminder.",
                 structuredSummary: {
-                    outcome: "escalated",
-                    sentiment: { start: "frustrated", end: "neutral" },
-                    topics: ["billing_dispute", "unauthorized_charge", "escalation", "warranty"],
-                    actionItems: ["Senior support callback within 2 hours", "Process $89 warranty refund", "Investigate checkout flow for auto-add bug", "Consider additional compensation"],
+                    outcome: "handed_over",
+                    sentiment: { start: "frustrated", end: "frustrated" },
+                    topics: ["duplicate_charge", "refund_request", "payment_error", "escalation"],
+                    actionItems: ["Payments team callback within 60 minutes", "Process refund of $3,200 duplicate charge", "Agent to follow up if callback not made"],
                     followUpRequired: true,
-                    keyEntities: { "charge_amount": "$89", "charge_type": "Extended warranty", "charge_date": "December 5th", "previous_calls": "3", "callback_timeline": "2 hours" },
-                    summary: "Unauthorized warranty charge escalated to senior team. Potential checkout bug identified. Callback within 2 hours."
+                    keyEntities: { "booking_id": "BK-4421987", "property": "Park Hyatt Tokyo", "location": "Tokyo, Japan", "dates": "March 1-5, 2026", "duplicate_charge": "$3,200", "total_charged": "$6,400", "callback_number": "+1-555-234-8976", "callback_deadline": "60 minutes" },
+                    summary: "Duplicate $3,200 charge escalated to payments team. Callback promised within 1 hour."
                 },
                 evaluationResults: [
-                    { criteriaId: "crit-001", criteriaName: "Issue Resolution", passed: false, reasoning: "Issue was not resolved during conversation. Required escalation to senior team with callback." },
-                    { criteriaId: "crit-002", criteriaName: "Empathy & Tone", passed: true, reasoning: "Agent validated customer's frustration, believed their account of events, and acknowledged previous call failures." },
-                    { criteriaId: "crit-003", criteriaName: "Compliance Adherence", passed: true, reasoning: "Agent correctly escalated issue beyond their authority rather than making unauthorized commitments." },
-                    { criteriaId: "crit-004", criteriaName: "Handover Quality", passed: true, reasoning: "Comprehensive documentation provided for senior team including history, issue details, and customer expectations." }
+                    { criteriaId: "crit-001", criteriaName: "Issue Resolution", passed: false, reasoning: "Refund was not processed during conversation. Required handoff to payments team." },
+                    { criteriaId: "crit-002", criteriaName: "Empathy & Tone", passed: true, reasoning: "Agent repeatedly apologized, acknowledged financial impact, and offered callback instead of more hold time." },
+                    { criteriaId: "crit-003", criteriaName: "Booking Accuracy", passed: true, reasoning: "Agent correctly identified the duplicate charge from payment records and confirmed booking details." },
+                    { criteriaId: "crit-004", criteriaName: "Handover Quality", passed: true, reasoning: "Comprehensive case created with booking ID, charge amounts, callback number, and urgency level. Set personal follow-up reminder." }
                 ]
             },
             {
@@ -276,63 +279,138 @@
                 channel: "chat",
                 status: "successful",
                 transcript: [
-                    { role: "agent", content: "Hi there! How can I help you today?", timestamp: "00:00" },
-                    { role: "customer", content: "Where's my order? Tracking says delivered but I don't have it", timestamp: "00:10" },
-                    { role: "agent", content: "I'll look into that right away. What's your order number?", timestamp: "00:18" },
-                    { role: "customer", content: "TK-99210", timestamp: "00:28" },
-                    { role: "agent", content: "Thanks. I can see it was marked delivered at 2:34 PM today. Sometimes packages are left in a safe location. Could you check around your door, porch, or with neighbors?", timestamp: "00:38" },
-                    { role: "customer", content: "Oh wait, found it! It was behind the plant pot. Sorry about that!", timestamp: "01:00" },
-                    { role: "agent", content: "Great news! No need to apologize - glad it's there safely. Anything else I can help with?", timestamp: "01:08" }
+                    { role: "agent", content: "Hi there! Welcome to StayEasy. How can I help?", timestamp: "00:00" },
+                    { role: "customer", content: "What time is checkout at my hotel next week?", timestamp: "00:10" },
+                    { role: "agent", content: "I'd be happy to check that for you. What's your booking confirmation number?", timestamp: "00:18" },
+                    { role: "customer", content: "BK-6632198", timestamp: "00:28" },
+                    { role: "agent", content: "I found your booking at The Shard Hotel in London, January 28-30. Standard checkout time is 11:00 AM. Would you like me to request late checkout?", timestamp: "00:38" },
+                    { role: "customer", content: "No that's fine, 11 works. Thanks!", timestamp: "00:55" },
+                    { role: "agent", content: "You're welcome! Enjoy your stay in London. Let me know if you need anything else.", timestamp: "01:02" }
                 ],
-                proseSummary: "Customer reported missing package for order TK-99210. Agent verified delivery status and suggested checking safe locations. Customer found package behind plant pot. Quick resolution.",
+                proseSummary: "Customer inquired about checkout time for The Shard Hotel London booking BK-6632198, January 28-30. Standard checkout is 11:00 AM. Customer confirmed this works for them. Agent offered late checkout option which was declined.",
                 structuredSummary: {
                     outcome: "resolved",
                     sentiment: { start: "neutral", end: "satisfied" },
-                    topics: ["order_status", "delivery_inquiry"],
+                    topics: ["booking_inquiry", "checkout_time"],
                     actionItems: [],
                     followUpRequired: false,
-                    keyEntities: { "order_id": "TK-99210", "delivery_time": "2:34 PM", "resolution": "Package found by customer" },
-                    summary: "Missing package inquiry quickly resolved. Customer found package in safe spot location."
+                    keyEntities: { "booking_id": "BK-6632198", "property": "The Shard Hotel", "location": "London, UK", "dates": "January 28-30, 2026", "checkout_time": "11:00 AM" },
+                    summary: "Simple checkout time inquiry. Standard 11AM checkout confirmed."
                 },
                 evaluationResults: [
-                    { criteriaId: "crit-001", criteriaName: "Issue Resolution", passed: true, reasoning: "Customer's concern was addressed and package was located within the conversation." },
-                    { criteriaId: "crit-002", criteriaName: "Empathy & Tone", passed: true, reasoning: "Agent responded quickly and was gracious when customer found package." },
-                    { criteriaId: "crit-003", criteriaName: "Compliance Adherence", passed: true, reasoning: "Agent verified delivery details before suggesting customer search." }
+                    { criteriaId: "crit-001", criteriaName: "Issue Resolution", passed: true, reasoning: "Customer's question was answered completely. Proactively offered late checkout option." },
+                    { criteriaId: "crit-002", criteriaName: "Empathy & Tone", passed: true, reasoning: "Friendly tone, wished customer well. Efficient response without being curt." },
+                    { criteriaId: "crit-003", criteriaName: "Booking Accuracy", passed: true, reasoning: "Correctly identified property and dates. Provided accurate checkout time." }
                 ]
             },
             {
                 id: "conv-008",
                 date: "2026-01-19T11:30:00Z",
-                duration: "2:20",
-                messageCount: 12,
+                duration: "2:48",
+                messageCount: 14,
                 channel: "voice",
                 status: "successful",
                 transcript: [
-                    { role: "agent", content: "Good morning, TechStore support. How can I help you?", timestamp: "00:00" },
-                    { role: "customer", content: "Hi, I want to change my subscription from monthly to annual to get the discount.", timestamp: "00:08" },
-                    { role: "agent", content: "Great choice! The annual plan saves you 20%. I can make that switch for you. Can I verify your account email?", timestamp: "00:16" },
-                    { role: "customer", content: "mike.chen@email.com", timestamp: "00:28" },
-                    { role: "agent", content: "Thanks, Mike. I see you're currently on the monthly Pro plan at $29.99/month. The annual plan would be $287.90 for the year - that's a savings of $71.88.", timestamp: "00:40" },
-                    { role: "customer", content: "That sounds good. Will I lose any of my saved settings?", timestamp: "01:00" },
-                    { role: "agent", content: "Not at all! All your projects, settings, and data stay exactly as they are. The only change is your billing cycle.", timestamp: "01:10" },
-                    { role: "customer", content: "Perfect, let's do it.", timestamp: "01:22" },
-                    { role: "agent", content: "I've updated your subscription. Your next charge will be $287.90 on February 19th. You'll receive a confirmation email shortly. Is there anything else?", timestamp: "01:35" },
-                    { role: "customer", content: "Nope, that's all. Thanks!", timestamp: "01:50" }
+                    { role: "agent", content: "Good morning, StayEasy booking assistant. How can I help you today?", timestamp: "00:00" },
+                    { role: "customer", content: "Hi, I need to upgrade my room for my anniversary trip. We originally booked a standard room but I want to surprise my wife with something special.", timestamp: "00:10" },
+                    { role: "agent", content: "How lovely! I'd be happy to help make your anniversary extra special. What's your booking confirmation number?", timestamp: "00:22" },
+                    { role: "customer", content: "BK-3398456. It's at the Santorini Grace Hotel in Greece.", timestamp: "00:32" },
+                    { role: "agent", content: "Beautiful choice for an anniversary! I can see your booking for June 15th to 20th, currently a Deluxe Room. Let me check what upgrade options are available...", timestamp: "00:45" },
+                    { role: "customer", content: "Ideally something with a private pool or amazing view. Price isn't really an issue for this.", timestamp: "01:00" },
+                    { role: "agent", content: "Perfect. I have three options: The Villa Suite with infinity plunge pool and caldera view at €450/night additional. The Honeymoon Suite with private hot tub and sunset view at €320/night additional. Or the Grace Suite with the largest private pool at €580/night additional.", timestamp: "01:18" },
+                    { role: "customer", content: "The Villa Suite sounds perfect. The infinity pool with the caldera view - she's going to love that.", timestamp: "01:50" },
+                    { role: "agent", content: "Excellent choice! For 5 nights, the upgrade cost is €2,250. Your new total would be €4,100. Would you like me to process this upgrade?", timestamp: "02:02" },
+                    { role: "customer", content: "Yes please. Can you also add a note that it's our 10th anniversary? Maybe they can do something special?", timestamp: "02:15" },
+                    { role: "agent", content: "Absolutely! I've upgraded you to the Villa Suite with infinity plunge pool and added a special occasion note for your 10th anniversary. The hotel often arranges romantic touches like champagne, flowers, or a special dinner setup. You'll receive an updated confirmation. Is there anything else?", timestamp: "02:28" },
+                    { role: "customer", content: "That's perfect. Thank you so much!", timestamp: "02:40" }
                 ],
-                proseSummary: "Customer Mike Chen requested switch from monthly to annual Pro subscription. Agent explained 20% savings ($71.88 annually). Confirmed data and settings preserved during switch. Subscription updated successfully.",
+                proseSummary: "Customer requested room upgrade for 10th anniversary trip to Santorini Grace Hotel (BK-3398456, June 15-20). Upgraded from Deluxe Room to Villa Suite with infinity plunge pool and caldera view. Additional cost €2,250 (€450/night x 5), new total €4,100. Anniversary celebration note added to booking for special touches.",
                 structuredSummary: {
                     outcome: "resolved",
                     sentiment: { start: "neutral", end: "satisfied" },
-                    topics: ["subscription_change", "billing", "upgrade"],
+                    topics: ["room_upgrade", "special_occasion", "anniversary"],
                     actionItems: [],
                     followUpRequired: false,
-                    keyEntities: { "customer_email": "mike.chen@email.com", "old_plan": "Monthly Pro ($29.99/month)", "new_plan": "Annual Pro ($287.90/year)", "savings": "$71.88" },
-                    summary: "Monthly to annual subscription switch completed. Customer saves $71.88/year."
+                    keyEntities: { "booking_id": "BK-3398456", "property": "Santorini Grace Hotel", "location": "Santorini, Greece", "dates": "June 15-20, 2026", "original_room": "Deluxe Room", "new_room": "Villa Suite with infinity plunge pool", "upgrade_cost": "€2,250", "new_total": "€4,100", "special_occasion": "10th Anniversary" },
+                    summary: "Anniversary trip upgraded to Villa Suite with private pool. Hotel notified of 10th anniversary for special touches."
                 },
                 evaluationResults: [
-                    { criteriaId: "crit-001", criteriaName: "Issue Resolution", passed: true, reasoning: "Subscription change completed successfully. Customer received confirmation of savings and next billing date." },
-                    { criteriaId: "crit-002", criteriaName: "Empathy & Tone", passed: true, reasoning: "Agent was enthusiastic about customer's choice, proactively addressed potential concerns about data preservation." },
-                    { criteriaId: "crit-003", criteriaName: "Compliance Adherence", passed: true, reasoning: "Agent clearly stated new pricing, savings amount, and billing date before processing change." }
+                    { criteriaId: "crit-001", criteriaName: "Issue Resolution", passed: true, reasoning: "Room upgrade completed with anniversary note added. Customer expressed satisfaction." },
+                    { criteriaId: "crit-002", criteriaName: "Empathy & Tone", passed: true, reasoning: "Agent was enthusiastic about the anniversary, complimented hotel choice, and proactively mentioned hotel's typical special touches." },
+                    { criteriaId: "crit-003", criteriaName: "Booking Accuracy", passed: true, reasoning: "Clearly presented three upgrade options with specific amenities and pricing. Calculated 5-night total correctly." },
+                    { criteriaId: "crit-005", criteriaName: "Upsell Appropriateness", passed: true, reasoning: "Presented options at multiple price points without pressure. Let customer choose based on their stated preference for pool and view." }
+                ]
+            },
+            {
+                id: "conv-009",
+                date: "2026-01-18T09:15:00Z",
+                duration: "3:10",
+                messageCount: 16,
+                channel: "voice",
+                status: "failed",
+                transcript: [
+                    { role: "agent", content: "Hello, StayEasy booking assistant. How can I help?", timestamp: "00:00" },
+                    { role: "customer", content: "I need wheelchair accessible room for my Lisbon booking. I didn't realize when I booked that the standard rooms don't have accessibility features.", timestamp: "00:10" },
+                    { role: "agent", content: "Of course, I'll help you find an accessible room. What's your confirmation number?", timestamp: "00:22" },
+                    { role: "customer", content: "BK-8891234. Hotel Avenida Palace.", timestamp: "00:30" },
+                    { role: "agent", content: "I found your booking for February 5th to 8th. Let me check the accessible room availability... I'm seeing that the Hotel Avenida Palace's accessible rooms are fully booked for those dates. I'm so sorry.", timestamp: "00:48" },
+                    { role: "customer", content: "What? But I need an accessible room. My mother uses a wheelchair.", timestamp: "01:05" },
+                    { role: "agent", content: "I completely understand, and I want to find a solution for you. Let me check other comparable hotels in Lisbon with accessible rooms available for your dates.", timestamp: "01:18" },
+                    { role: "customer", content: "But I specifically chose this hotel for the location. It's close to where my family lives.", timestamp: "01:35" },
+                    { role: "agent", content: "I understand the location is important. I found the Tivoli Avenida Liberdade, which is only 400 meters from Hotel Avenida Palace, has an accessible room available. Same star rating, and I can match your original rate.", timestamp: "01:52" },
+                    { role: "customer", content: "I don't know... let me think about it. Can you hold my original booking while I discuss with my mother?", timestamp: "02:15" },
+                    { role: "agent", content: "Absolutely. I'll place a 48-hour hold on both your original booking and the accessible room at Tivoli. I'll also email you the details of the Tivoli option so you can show your mother. Just call us back when you've decided.", timestamp: "02:30" },
+                    { role: "customer", content: "Okay, thank you. I'll call back tomorrow.", timestamp: "02:50" }
+                ],
+                proseSummary: "Customer requested wheelchair accessible room for Hotel Avenida Palace Lisbon booking (BK-8891234, Feb 5-8). Original hotel has no accessible rooms available. Agent offered alternative at Tivoli Avenida Liberdade (400m away, same rate, accessible room available). Customer requested time to consider. 48-hour hold placed on both bookings. Details emailed to customer.",
+                structuredSummary: {
+                    outcome: "handed_over",
+                    sentiment: { start: "neutral", end: "neutral" },
+                    topics: ["accessibility", "room_change", "special_needs", "alternative_property"],
+                    actionItems: ["Customer to call back within 48 hours with decision", "Hold expires on original booking and Tivoli alternative", "Follow up if no response in 48 hours"],
+                    followUpRequired: true,
+                    keyEntities: { "booking_id": "BK-8891234", "original_property": "Hotel Avenida Palace", "alternative_property": "Tivoli Avenida Liberdade", "location": "Lisbon, Portugal", "dates": "February 5-8, 2026", "accessibility_need": "Wheelchair accessible room", "hold_duration": "48 hours", "distance_between": "400 meters" },
+                    summary: "Accessible room unavailable at original hotel. Alternative offered at Tivoli (400m away). Customer deciding - 48hr hold on both."
+                },
+                evaluationResults: [
+                    { criteriaId: "crit-001", criteriaName: "Issue Resolution", passed: false, reasoning: "Customer's need for accessible room was not fully resolved. Awaiting customer decision on alternative property." },
+                    { criteriaId: "crit-002", criteriaName: "Empathy & Tone", passed: true, reasoning: "Agent acknowledged importance of location, found nearby alternative, and gave customer time to decide with family." },
+                    { criteriaId: "crit-003", criteriaName: "Booking Accuracy", passed: true, reasoning: "Agent correctly identified accessibility limitation at original property and found comparable alternative with accurate distance information." },
+                    { criteriaId: "crit-007", criteriaName: "Accessibility Handling", passed: true, reasoning: "Agent took accessibility request seriously, proactively searched alternatives, and ensured customer wouldn't lose either option while deciding." }
+                ]
+            },
+            {
+                id: "conv-010",
+                date: "2026-01-17T15:45:00Z",
+                duration: "1:55",
+                messageCount: 10,
+                channel: "chat",
+                status: "successful",
+                transcript: [
+                    { role: "agent", content: "Hi! How can I help you today?", timestamp: "00:00" },
+                    { role: "customer", content: "I need to add breakfast to my booking. BK-2245671 at the Mandarin Oriental Bangkok", timestamp: "00:12" },
+                    { role: "agent", content: "I'd be happy to add breakfast. Let me pull up your booking... Found it! March 10-14, Executive Room. The daily breakfast buffet is $45 per person. With 2 guests for 4 nights, that would be $360 total. Would you like me to add this?", timestamp: "00:25" },
+                    { role: "customer", content: "Actually is there a cheaper continental option?", timestamp: "00:48" },
+                    { role: "agent", content: "Yes! The continental breakfast is $28 per person per day. For 2 guests over 4 nights, that would be $224 total. This includes pastries, fresh fruit, yogurt, coffee and juice.", timestamp: "01:00" },
+                    { role: "customer", content: "That's better. Let's go with the continental.", timestamp: "01:18" },
+                    { role: "agent", content: "I've added continental breakfast for 2 guests to your booking. Your updated total is $1,824 (was $1,600). Breakfast is served 6:30-10:30 AM in the River Wing restaurant. Confirmation email on its way!", timestamp: "01:32" },
+                    { role: "customer", content: "Great, thanks!", timestamp: "01:48" }
+                ],
+                proseSummary: "Customer added continental breakfast to Mandarin Oriental Bangkok booking (BK-2245671, March 10-14). Selected continental option ($28/person/day) over buffet ($45/person/day). Total breakfast cost: $224 for 2 guests x 4 nights. New booking total: $1,824. Breakfast served 6:30-10:30 AM at River Wing restaurant.",
+                structuredSummary: {
+                    outcome: "resolved",
+                    sentiment: { start: "neutral", end: "satisfied" },
+                    topics: ["add_breakfast", "booking_modification", "meal_package"],
+                    actionItems: [],
+                    followUpRequired: false,
+                    keyEntities: { "booking_id": "BK-2245671", "property": "Mandarin Oriental Bangkok", "location": "Bangkok, Thailand", "dates": "March 10-14, 2026", "breakfast_type": "Continental", "breakfast_cost": "$224 total", "breakfast_time": "6:30-10:30 AM", "restaurant": "River Wing", "new_total": "$1,824" },
+                    summary: "Continental breakfast added for 2 guests ($224 total). Served 6:30-10:30 AM at River Wing."
+                },
+                evaluationResults: [
+                    { criteriaId: "crit-001", criteriaName: "Issue Resolution", passed: true, reasoning: "Breakfast successfully added. Customer received pricing options and made informed choice." },
+                    { criteriaId: "crit-002", criteriaName: "Empathy & Tone", passed: true, reasoning: "Agent efficiently handled request and provided helpful details about what's included and timing." },
+                    { criteriaId: "crit-003", criteriaName: "Booking Accuracy", passed: true, reasoning: "Correct pricing for both options. Accurate calculation of total (2 guests x 4 nights x $28 = $224)." },
+                    { criteriaId: "crit-005", criteriaName: "Upsell Appropriateness", passed: true, reasoning: "Presented premium option first but immediately offered budget alternative when customer asked. No pressure tactics." }
                 ]
             }
         ];
@@ -388,7 +466,7 @@
                 <nav className="w-52 bg-se-darker border-r border-se-border flex flex-col py-4">
                     <div className="px-4 mb-6 flex items-center gap-2">
                         <Icons.Logo />
-                        <span className="font-semibold text-se-text">gin-ai</span>
+                        <span className="font-semibold text-se-text">StayEasy</span>
                     </div>
                     <div className="flex flex-col gap-1 px-2">
                         {menuItems.map(({ id, label }) => (
@@ -454,7 +532,7 @@
                             <ChannelIcon channel={conversation.channel} />
                         </div>
                         <div>
-                            <span className="text-sm font-medium text-se-text block">{conversation.id}</span>
+                            <span className="text-sm font-medium text-se-text block">{conversation.structuredSummary.keyEntities.property || conversation.id}</span>
                             <span className="text-xs text-se-muted">{getTimeAgo(conversation.date)}</span>
                         </div>
                     </div>
@@ -480,7 +558,8 @@
                 if (filter === 'escalated' && !['escalated', 'handed_over'].includes(outcome)) return false;
                 if (filter === 'pending' && outcome !== 'abandoned') return false;
                 if (search && !c.id.toLowerCase().includes(search.toLowerCase()) &&
-                    !c.structuredSummary.summary.toLowerCase().includes(search.toLowerCase())) return false;
+                    !c.structuredSummary.summary.toLowerCase().includes(search.toLowerCase()) &&
+                    !(c.structuredSummary.keyEntities.property || '').toLowerCase().includes(search.toLowerCase())) return false;
                 return true;
             }), [conversations, filter, search]);
 
@@ -499,7 +578,7 @@
                             <span className="text-xs text-se-muted">{filtered.length} of {stats.total}</span>
                         </div>
                         <div className="relative">
-                            <input type="text" placeholder="Search conversations..."
+                            <input type="text" placeholder="Search by property or topic..."
                                 value={search} onChange={e => setSearch(e.target.value)}
                                 className="w-full pl-9 pr-3 py-2 bg-se-card border border-se-border rounded-lg text-sm placeholder-se-muted focus:outline-none focus:border-se-accent" />
                             <div className="absolute left-3 top-1/2 -translate-y-1/2 text-se-muted"><Icons.Search /></div>
@@ -567,7 +646,7 @@
                             <p className="text-sm text-se-text leading-relaxed">{proseSummary}</p>
                         </div>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                             <OutcomeBadge outcome={structuredSummary.outcome} />
                             <SentimentIndicator sentiment={structuredSummary.sentiment} />
                             {structuredSummary.followUpRequired && (
@@ -579,7 +658,7 @@
                             <h4 className="text-xs font-medium text-se-muted mb-2">Topics</h4>
                             <div className="flex flex-wrap gap-1.5">
                                 {structuredSummary.topics.map((topic, i) => (
-                                    <span key={i} className="px-2 py-1 bg-se-accent/20 text-se-accent text-xs rounded-full">{topic.replace('_', ' ')}</span>
+                                    <span key={i} className="px-2 py-1 bg-se-accent/20 text-se-accent text-xs rounded-full">{topic.replace(/_/g, ' ')}</span>
                                 ))}
                             </div>
                         </div>
@@ -599,12 +678,12 @@
                         )}
 
                         <div>
-                            <h4 className="text-xs font-medium text-se-muted mb-2">Key Information</h4>
+                            <h4 className="text-xs font-medium text-se-muted mb-2">Booking Details</h4>
                             <dl className="space-y-1.5 text-xs">
                                 {Object.entries(structuredSummary.keyEntities).map(([key, value]) => (
                                     <div key={key} className="flex justify-between">
-                                        <dt className="text-se-muted">{key.replace('_', ' ')}</dt>
-                                        <dd className="text-se-text font-medium">{value}</dd>
+                                        <dt className="text-se-muted">{key.replace(/_/g, ' ')}</dt>
+                                        <dd className="text-se-text font-medium text-right max-w-[180px]">{value}</dd>
                                     </div>
                                 ))}
                             </dl>
@@ -637,19 +716,23 @@
                 );
             }
 
+            const property = conversation.structuredSummary.keyEntities.property || conversation.structuredSummary.keyEntities.original_property || 'Booking';
+            const location = conversation.structuredSummary.keyEntities.location || '';
+
             return (
                 <div className="flex-1 flex flex-col bg-se-dark">
                     <div className="p-4 border-b border-se-border">
                         <div className="flex items-center justify-between">
                             <div>
                                 <div className="flex items-center gap-3 mb-1">
-                                    <h2 className="text-lg font-semibold">{conversation.id}</h2>
+                                    <h2 className="text-lg font-semibold">{property}</h2>
                                     <OutcomeBadge outcome={conversation.structuredSummary.outcome} />
                                     <div className={`px-2 py-0.5 rounded text-xs font-medium flex items-center gap-1 ${conversation.channel === 'voice' ? 'bg-se-blue/20 text-se-blue' : 'bg-se-accent/20 text-se-accent'}`}>
                                         <ChannelIcon channel={conversation.channel} /> {conversation.channel}
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-4 text-sm text-se-muted">
+                                    {location && <span>{location}</span>}
                                     <span>{formatDate(conversation.date)}</span>
                                     <span>{conversation.duration}</span>
                                     <span>{conversation.messageCount} messages</span>
