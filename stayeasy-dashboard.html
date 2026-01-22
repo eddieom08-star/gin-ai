@@ -469,6 +469,15 @@
             Zap: () => <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>,
             Bell: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>,
             Settings: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>,
+            Wand: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.042 21.672L13.684 16.6m0 0l-2.51 2.225.569-9.47 5.227 7.917-3.286-.672zM12 2.25V4.5m5.834.166l-1.591 1.591M20.25 10.5H18M7.757 14.743l-1.59 1.59M6 10.5H3.75m4.007-4.243l-1.59-1.59"/></svg>,
+            Maximize: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>,
+            GripVertical: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1" fill="currentColor"/><circle cx="15" cy="6" r="1" fill="currentColor"/><circle cx="9" cy="12" r="1" fill="currentColor"/><circle cx="15" cy="12" r="1" fill="currentColor"/><circle cx="9" cy="18" r="1" fill="currentColor"/><circle cx="15" cy="18" r="1" fill="currentColor"/></svg>,
+            Code: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>,
+            FileText: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>,
+            HelpCircle: () => <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" strokeWidth="2"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3m.08 4h.01"/></svg>,
+            ToggleOn: () => <svg className="w-10 h-6" viewBox="0 0 40 24" fill="none"><rect x="1" y="1" width="38" height="22" rx="11" fill="#10b981" stroke="#10b981" strokeWidth="2"/><circle cx="28" cy="12" r="8" fill="white"/></svg>,
+            ToggleOff: () => <svg className="w-10 h-6" viewBox="0 0 40 24" fill="none"><rect x="1" y="1" width="38" height="22" rx="11" fill="#2a2d35" stroke="#2a2d35" strokeWidth="2"/><circle cx="12" cy="12" r="8" fill="#9ca3af"/></svg>,
+            ArrowLeft: () => <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>,
         };
 
         // Header Component
@@ -517,8 +526,368 @@
             );
         };
 
+        // Agent Configuration Screen
+        const AgentConfigScreen = ({ onBack, agentName }) => {
+            const [formData, setFormData] = useState({
+                name: agentName || '',
+                description: '',
+                model: 'gpt-4o-mini',
+                modelProvider: 'OpenAI',
+                agentRole: '',
+                agentGoal: '',
+                agentInstructions: '',
+                isManagerAgent: false
+            });
+            const [tools, setTools] = useState([]);
+            const [examples, setExamples] = useState([]);
+            const [structuredOutputs, setStructuredOutputs] = useState([]);
+            const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
+            const [expandedTextarea, setExpandedTextarea] = useState(null);
+
+            const modelOptions = [
+                { provider: 'OpenAI', models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'] },
+                { provider: 'Anthropic', models: ['claude-3-opus', 'claude-3-sonnet', 'claude-3-haiku'] },
+                { provider: 'Google', models: ['gemini-pro', 'gemini-pro-vision'] }
+            ];
+
+            const handleInputChange = (field, value) => {
+                setFormData(prev => ({ ...prev, [field]: value }));
+            };
+
+            const handleModelSelect = (provider, model) => {
+                setFormData(prev => ({ ...prev, modelProvider: provider, model: model }));
+                setIsModelDropdownOpen(false);
+            };
+
+            const addTool = () => setTools(prev => [...prev, { id: Date.now(), name: '', description: '' }]);
+            const removeTool = (id) => setTools(prev => prev.filter(t => t.id !== id));
+            const addExample = () => setExamples(prev => [...prev, { id: Date.now(), input: '', output: '' }]);
+            const removeExample = (id) => setExamples(prev => prev.filter(e => e.id !== id));
+            const addStructuredOutput = () => setStructuredOutputs(prev => [...prev, { id: Date.now(), schema: '{\n  \n}' }]);
+            const removeStructuredOutput = (id) => setStructuredOutputs(prev => prev.filter(s => s.id !== id));
+
+            const ExpandedTextareaModal = ({ field, label, value, onClose }) => (
+                <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-8">
+                    <div className="bg-se-card border border-se-border rounded-xl w-full max-w-4xl max-h-[80vh] flex flex-col shadow-2xl">
+                        <div className="flex items-center justify-between p-4 border-b border-se-border">
+                            <h3 className="text-lg font-medium text-se-text">{label}</h3>
+                            <button onClick={onClose} className="px-4 py-2 bg-se-accent hover:bg-se-accent/80 text-white rounded-lg text-sm font-medium transition-colors">
+                                Done
+                            </button>
+                        </div>
+                        <textarea
+                            value={value}
+                            onChange={(e) => handleInputChange(field, e.target.value)}
+                            className="flex-1 p-4 bg-transparent text-se-text text-sm focus:outline-none resize-none"
+                            autoFocus
+                        />
+                    </div>
+                </div>
+            );
+
+            return (
+                <div className="flex-1 overflow-auto bg-se-dark">
+                    {expandedTextarea && (
+                        <ExpandedTextareaModal
+                            field={expandedTextarea.field}
+                            label={expandedTextarea.label}
+                            value={formData[expandedTextarea.field]}
+                            onClose={() => setExpandedTextarea(null)}
+                        />
+                    )}
+
+                    <div className="max-w-3xl mx-auto p-8">
+                        {/* Header with Back Button */}
+                        <div className="mb-8">
+                            <button onClick={onBack} className="flex items-center gap-2 text-se-muted hover:text-se-text mb-4 transition-colors">
+                                <Icons.ArrowLeft />
+                                <span className="text-sm">Back to Agents</span>
+                            </button>
+                            <h1 className="text-2xl font-semibold text-se-text">{agentName ? 'Edit Agent' : 'Create New Agent'}</h1>
+                            <p className="text-sm text-se-muted mt-1">Configure your AI agent's behavior and capabilities</p>
+                        </div>
+
+                        {/* Form Card */}
+                        <div className="bg-se-card rounded-lg border border-se-border p-6 space-y-6">
+                            {/* Name Field */}
+                            <div>
+                                <label className="block text-sm font-medium text-se-text mb-2">Name</label>
+                                <input
+                                    type="text"
+                                    value={formData.name}
+                                    onChange={(e) => handleInputChange('name', e.target.value)}
+                                    placeholder="Agent name"
+                                    className="w-full px-4 py-3 bg-se-dark border border-se-border rounded-lg text-sm text-se-text placeholder-se-muted focus:outline-none focus:ring-2 focus:ring-se-accent focus:border-transparent transition-all"
+                                />
+                            </div>
+
+                            {/* Description Field */}
+                            <div>
+                                <label className="block text-sm font-medium text-se-text mb-2">Description</label>
+                                <input
+                                    type="text"
+                                    value={formData.description}
+                                    onChange={(e) => handleInputChange('description', e.target.value)}
+                                    placeholder="Agent description"
+                                    className="w-full px-4 py-3 bg-se-dark border border-se-border rounded-lg text-sm text-se-text placeholder-se-muted focus:outline-none focus:ring-2 focus:ring-se-accent focus:border-transparent transition-all"
+                                />
+                            </div>
+
+                            {/* Model Selector */}
+                            <div>
+                                <div className="flex items-center justify-between mb-2">
+                                    <label className="block text-sm font-medium text-se-text">Model</label>
+                                    <a href="#" className="inline-flex items-center gap-1 text-xs text-se-accent hover:underline">
+                                        <Icons.HelpCircle />
+                                        Need help choosing?
+                                    </a>
+                                </div>
+                                <div className="relative">
+                                    <button
+                                        onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
+                                        className="w-full px-4 py-3 bg-se-dark border border-se-border rounded-lg text-sm text-se-text flex items-center justify-between hover:border-se-hover focus:outline-none focus:ring-2 focus:ring-se-accent focus:border-transparent transition-all"
+                                    >
+                                        <span>{formData.modelProvider} / {formData.model}</span>
+                                        <div className="flex items-center gap-2">
+                                            <Icons.Tool />
+                                            <Icons.ChevronDown />
+                                        </div>
+                                    </button>
+                                    {isModelDropdownOpen && (
+                                        <>
+                                            <div className="fixed inset-0 z-40" onClick={() => setIsModelDropdownOpen(false)} />
+                                            <div className="absolute z-50 w-full mt-2 bg-se-card border border-se-border rounded-lg shadow-xl overflow-hidden">
+                                                {modelOptions.map((group) => (
+                                                    <div key={group.provider}>
+                                                        <div className="px-4 py-2 bg-se-hover text-xs font-medium text-se-muted uppercase tracking-wider">
+                                                            {group.provider}
+                                                        </div>
+                                                        {group.models.map((model) => (
+                                                            <button
+                                                                key={model}
+                                                                onClick={() => handleModelSelect(group.provider, model)}
+                                                                className={`w-full px-4 py-2.5 text-left text-sm hover:bg-se-hover transition-colors ${
+                                                                    formData.model === model && formData.modelProvider === group.provider
+                                                                        ? 'bg-se-accent/20 text-se-accent'
+                                                                        : 'text-se-text'
+                                                                }`}
+                                                            >
+                                                                {model}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Agent Role */}
+                            <div className="bg-se-dark/50 rounded-lg border border-se-border p-4">
+                                <div className="flex items-center justify-between mb-3">
+                                    <label className="block text-sm font-medium text-se-text">Agent Role</label>
+                                    <button className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-se-hover border border-se-border text-se-text rounded-lg text-xs font-medium hover:bg-se-border transition-colors">
+                                        <Icons.Wand />
+                                        Generate with AI
+                                    </button>
+                                </div>
+                                <textarea
+                                    value={formData.agentRole}
+                                    onChange={(e) => handleInputChange('agentRole', e.target.value)}
+                                    placeholder="You are an expert customer support agent."
+                                    rows={2}
+                                    className="w-full px-4 py-3 bg-se-dark border border-se-border rounded-lg text-sm text-se-text placeholder-se-muted focus:outline-none focus:ring-2 focus:ring-se-accent focus:border-transparent transition-all resize-none"
+                                />
+                            </div>
+
+                            {/* Agent Goal */}
+                            <div className="bg-se-dark/50 rounded-lg border border-se-border p-4">
+                                <div className="flex items-center justify-between mb-3">
+                                    <label className="block text-sm font-medium text-se-text">Agent Goal</label>
+                                    <button
+                                        onClick={() => setExpandedTextarea({ field: 'agentGoal', label: 'Agent Goal' })}
+                                        className="p-1.5 text-se-muted hover:text-se-text hover:bg-se-hover rounded transition-colors"
+                                    >
+                                        <Icons.Maximize />
+                                    </button>
+                                </div>
+                                <textarea
+                                    value={formData.agentGoal}
+                                    onChange={(e) => handleInputChange('agentGoal', e.target.value)}
+                                    placeholder="Your goal is to address and resolve customer inquiries."
+                                    rows={2}
+                                    className="w-full px-4 py-3 bg-se-dark border border-se-border rounded-lg text-sm text-se-text placeholder-se-muted focus:outline-none focus:ring-2 focus:ring-se-accent focus:border-transparent transition-all resize-none"
+                                />
+                            </div>
+
+                            {/* Agent Instructions */}
+                            <div className="bg-se-dark/50 rounded-lg border border-se-border p-4">
+                                <div className="flex items-center justify-between mb-3">
+                                    <label className="block text-sm font-medium text-se-text">Agent Instructions</label>
+                                    <button
+                                        onClick={() => setExpandedTextarea({ field: 'agentInstructions', label: 'Agent Instructions' })}
+                                        className="p-1.5 text-se-muted hover:text-se-text hover:bg-se-hover rounded transition-colors"
+                                    >
+                                        <Icons.Maximize />
+                                    </button>
+                                </div>
+                                <textarea
+                                    value={formData.agentInstructions}
+                                    onChange={(e) => handleInputChange('agentInstructions', e.target.value)}
+                                    placeholder="LISTEN to the customer's concern & GATHER all relevant information needed for resolution. PROVIDE clear and concise answers to the customer. Type @ to mention other agents."
+                                    rows={4}
+                                    className="w-full px-4 py-3 bg-se-dark border border-se-border rounded-lg text-sm text-se-text placeholder-se-muted focus:outline-none focus:ring-2 focus:ring-se-accent focus:border-transparent transition-all resize-none"
+                                />
+                            </div>
+
+                            {/* Manager Agent Toggle */}
+                            <div className="flex items-center justify-between py-4 border-t border-b border-se-border">
+                                <div className="flex items-center gap-3">
+                                    <button onClick={() => handleInputChange('isManagerAgent', !formData.isManagerAgent)}>
+                                        {formData.isManagerAgent ? <Icons.ToggleOn /> : <Icons.ToggleOff />}
+                                    </button>
+                                    <span className="text-sm font-medium text-se-text">Manager Agent</span>
+                                </div>
+                                <a href="#" className="text-xs text-se-accent hover:underline">Improve prompt</a>
+                            </div>
+
+                            {/* Tool Configuration Section */}
+                            <div>
+                                <div className="flex items-center justify-between mb-3">
+                                    <label className="text-sm font-medium text-se-text">Tool Configuration</label>
+                                    <button
+                                        onClick={addTool}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-se-hover border border-se-border text-se-text rounded-lg text-xs font-medium hover:bg-se-border transition-colors"
+                                    >
+                                        <Icons.Plus />
+                                        Add
+                                    </button>
+                                </div>
+                                {tools.length === 0 ? (
+                                    <div className="py-6 text-center border border-dashed border-se-border rounded-lg bg-se-dark/30">
+                                        <Icons.Tool className="w-6 h-6 text-se-muted mx-auto mb-2" />
+                                        <p className="text-sm text-se-muted">No tools configured</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {tools.map((tool) => (
+                                            <div key={tool.id} className="flex items-start gap-3 p-4 bg-se-dark border border-se-border rounded-lg">
+                                                <Icons.GripVertical />
+                                                <div className="flex-1 space-y-2">
+                                                    <input type="text" placeholder="Tool name" className="w-full px-3 py-2 bg-se-card border border-se-border rounded-lg text-sm text-se-text placeholder-se-muted focus:outline-none focus:ring-2 focus:ring-se-accent" />
+                                                    <input type="text" placeholder="Tool description" className="w-full px-3 py-2 bg-se-card border border-se-border rounded-lg text-sm text-se-text placeholder-se-muted focus:outline-none focus:ring-2 focus:ring-se-accent" />
+                                                </div>
+                                                <button onClick={() => removeTool(tool.id)} className="p-1.5 text-se-muted hover:text-se-error hover:bg-se-error/10 rounded transition-colors">
+                                                    <Icons.Trash />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Examples Section */}
+                            <div>
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center gap-2">
+                                        <Icons.FileText />
+                                        <label className="text-sm font-medium text-se-text">Examples (Text)</label>
+                                    </div>
+                                    <button
+                                        onClick={addExample}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-se-hover border border-se-border text-se-text rounded-lg text-xs font-medium hover:bg-se-border transition-colors"
+                                    >
+                                        <Icons.Plus />
+                                        Add
+                                    </button>
+                                </div>
+                                {examples.length === 0 ? (
+                                    <div className="py-6 text-center border border-dashed border-se-border rounded-lg bg-se-dark/30">
+                                        <p className="text-sm text-se-muted">No examples added</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {examples.map((example) => (
+                                            <div key={example.id} className="flex items-start gap-3 p-4 bg-se-dark border border-se-border rounded-lg">
+                                                <Icons.GripVertical />
+                                                <div className="flex-1 space-y-2">
+                                                    <div>
+                                                        <label className="text-xs text-se-muted mb-1 block">Input</label>
+                                                        <textarea placeholder="Example user input..." rows={2} className="w-full px-3 py-2 bg-se-card border border-se-border rounded-lg text-sm text-se-text placeholder-se-muted focus:outline-none focus:ring-2 focus:ring-se-accent resize-none" />
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-xs text-se-muted mb-1 block">Output</label>
+                                                        <textarea placeholder="Expected agent response..." rows={2} className="w-full px-3 py-2 bg-se-card border border-se-border rounded-lg text-sm text-se-text placeholder-se-muted focus:outline-none focus:ring-2 focus:ring-se-accent resize-none" />
+                                                    </div>
+                                                </div>
+                                                <button onClick={() => removeExample(example.id)} className="p-1.5 text-se-muted hover:text-se-error hover:bg-se-error/10 rounded transition-colors">
+                                                    <Icons.Trash />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Structured Output Section */}
+                            <div>
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center gap-2">
+                                        <Icons.Code />
+                                        <label className="text-sm font-medium text-se-text">Structured Output (JSON)</label>
+                                    </div>
+                                    <button
+                                        onClick={addStructuredOutput}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-se-hover border border-se-border text-se-text rounded-lg text-xs font-medium hover:bg-se-border transition-colors"
+                                    >
+                                        <Icons.Plus />
+                                        Add
+                                    </button>
+                                </div>
+                                {structuredOutputs.length === 0 ? (
+                                    <div className="py-6 text-center border border-dashed border-se-border rounded-lg bg-se-dark/30">
+                                        <p className="text-sm text-se-muted">No structured outputs defined</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {structuredOutputs.map((output) => (
+                                            <div key={output.id} className="flex items-start gap-3 p-4 bg-se-dark border border-se-border rounded-lg">
+                                                <Icons.GripVertical />
+                                                <div className="flex-1">
+                                                    <textarea
+                                                        defaultValue={output.schema}
+                                                        placeholder='{"type": "object", "properties": {...}}'
+                                                        rows={4}
+                                                        className="w-full px-3 py-2 bg-se-card border border-se-border rounded-lg text-sm text-se-text font-mono placeholder-se-muted focus:outline-none focus:ring-2 focus:ring-se-accent resize-none"
+                                                    />
+                                                </div>
+                                                <button onClick={() => removeStructuredOutput(output.id)} className="p-1.5 text-se-muted hover:text-se-error hover:bg-se-error/10 rounded transition-colors">
+                                                    <Icons.Trash />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex items-center justify-end gap-3 pt-4 border-t border-se-border">
+                                <button onClick={onBack} className="px-6 py-2.5 bg-se-hover border border-se-border text-se-text rounded-lg text-sm font-medium hover:bg-se-border transition-colors">
+                                    Cancel
+                                </button>
+                                <button className="px-6 py-2.5 bg-se-accent hover:bg-se-accent/80 text-white rounded-lg text-sm font-medium transition-colors">
+                                    Save Agent
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
         // Components
-        const NavSidebar = ({ conversationFilter, setConversationFilter, isCollapsed, onToggleCollapse }) => {
+        const NavSidebar = ({ conversationFilter, setConversationFilter, isCollapsed, onToggleCollapse, onNavigate, currentView }) => {
             const [agentDropdownOpen, setAgentDropdownOpen] = useState(false);
             const [conversationsDropdownOpen, setConversationsDropdownOpen] = useState(true);
 
@@ -612,10 +981,16 @@
                                 </button>
                                 {hasDropdown && agentDropdownOpen && (
                                     <div className="ml-6 mt-1 flex flex-col gap-1">
-                                        <button className="px-3 py-1.5 rounded text-left text-xs text-se-muted hover:bg-se-hover hover:text-se-text transition-colors">
+                                        <button
+                                            onClick={() => onNavigate && onNavigate('agentConfig', 'Bert - Booking Assistant')}
+                                            className={`px-3 py-1.5 rounded text-left text-xs transition-colors ${currentView === 'agentConfig' ? 'bg-se-accent/20 text-se-accent' : 'text-se-muted hover:bg-se-hover hover:text-se-text'}`}
+                                        >
                                             Bert - Booking Assistant
                                         </button>
-                                        <button className="px-3 py-1.5 rounded text-left text-xs text-se-accent hover:bg-se-hover transition-colors">
+                                        <button
+                                            onClick={() => onNavigate && onNavigate('agentConfig', null)}
+                                            className="px-3 py-1.5 rounded text-left text-xs text-se-accent hover:bg-se-hover transition-colors"
+                                        >
                                             + Create new agent
                                         </button>
                                     </div>
@@ -1992,6 +2367,15 @@
             const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
             const [criteriaPanelCollapsed, setCriteriaPanelCollapsed] = useState(false);
 
+            // Navigation State
+            const [currentView, setCurrentView] = useState('conversations'); // 'conversations' | 'agentConfig'
+            const [editingAgentName, setEditingAgentName] = useState(null);
+
+            const handleNavigate = (view, agentName = null) => {
+                setCurrentView(view);
+                setEditingAgentName(agentName);
+            };
+
             // Evaluation Criteria State
             const [evaluationCriteria, setEvaluationCriteria] = useState(DEFAULT_CRITERIA);
             const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -2143,63 +2527,75 @@
                 <div className="h-screen flex">
                     <NavSidebar
                         conversationFilter={conversationFilter}
-                        setConversationFilter={setConversationFilter}
+                        setConversationFilter={(filter) => {
+                            setConversationFilter(filter);
+                            setCurrentView('conversations');
+                        }}
                         isCollapsed={sidebarCollapsed}
                         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+                        onNavigate={handleNavigate}
+                        currentView={currentView}
                     />
                     <div className="flex-1 flex flex-col overflow-hidden">
                         <Header />
-                        <div className="flex-1 flex overflow-hidden">
-                            {isEvaluateMode ? (
-                                <>
-                                    <ConversationList
-                                        conversations={conversations}
-                                        selectedId={selectedId}
-                                        onSelect={setSelectedId}
-                                        filter="all"
-                                        search={search}
-                                        setSearch={setSearch}
-                                        loading={loading}
-                                        error={error}
-                                        onRefresh={fetchConversations}
-                                        activeCall={activeCall}
-                                        onSelectActiveCall={handleSelectActiveCall}
-                                    />
-                                    {selectedConversation && (
-                                        <ConversationDetail conversation={selectedConversation} evaluationCriteria={evaluationCriteria} isEvaluateMode={true} />
-                                    )}
-                                    <EvaluationCriteriaPanel
-                                        criteria={evaluationCriteria}
-                                        conversations={conversations}
-                                        onAdd={openCreateDrawer}
-                                        onEdit={openEditDrawer}
-                                        isCollapsed={criteriaPanelCollapsed}
-                                        onToggleCollapse={() => setCriteriaPanelCollapsed(!criteriaPanelCollapsed)}
-                                    />
-                                </>
-                            ) : (
-                                <>
-                                    <ConversationList
-                                        conversations={conversations}
-                                        selectedId={selectedId}
-                                        onSelect={setSelectedId}
-                                        filter={conversationFilter}
-                                        search={search}
-                                        setSearch={setSearch}
-                                        loading={loading}
-                                        error={error}
-                                        onRefresh={fetchConversations}
-                                        activeCall={activeCall}
-                                        onSelectActiveCall={handleSelectActiveCall}
-                                    />
-                                    <ConversationDetail
-                                        conversation={selectedConversation}
-                                        evaluationCriteria={null}
-                                        activeCall={isActiveCallSelected ? activeCall : null}
-                                    />
-                                </>
-                            )}
-                        </div>
+                        {currentView === 'agentConfig' ? (
+                            <AgentConfigScreen
+                                onBack={() => setCurrentView('conversations')}
+                                agentName={editingAgentName}
+                            />
+                        ) : (
+                            <div className="flex-1 flex overflow-hidden">
+                                {isEvaluateMode ? (
+                                    <>
+                                        <ConversationList
+                                            conversations={conversations}
+                                            selectedId={selectedId}
+                                            onSelect={setSelectedId}
+                                            filter="all"
+                                            search={search}
+                                            setSearch={setSearch}
+                                            loading={loading}
+                                            error={error}
+                                            onRefresh={fetchConversations}
+                                            activeCall={activeCall}
+                                            onSelectActiveCall={handleSelectActiveCall}
+                                        />
+                                        {selectedConversation && (
+                                            <ConversationDetail conversation={selectedConversation} evaluationCriteria={evaluationCriteria} isEvaluateMode={true} />
+                                        )}
+                                        <EvaluationCriteriaPanel
+                                            criteria={evaluationCriteria}
+                                            conversations={conversations}
+                                            onAdd={openCreateDrawer}
+                                            onEdit={openEditDrawer}
+                                            isCollapsed={criteriaPanelCollapsed}
+                                            onToggleCollapse={() => setCriteriaPanelCollapsed(!criteriaPanelCollapsed)}
+                                        />
+                                    </>
+                                ) : (
+                                    <>
+                                        <ConversationList
+                                            conversations={conversations}
+                                            selectedId={selectedId}
+                                            onSelect={setSelectedId}
+                                            filter={conversationFilter}
+                                            search={search}
+                                            setSearch={setSearch}
+                                            loading={loading}
+                                            error={error}
+                                            onRefresh={fetchConversations}
+                                            activeCall={activeCall}
+                                            onSelectActiveCall={handleSelectActiveCall}
+                                        />
+                                        <ConversationDetail
+                                            conversation={selectedConversation}
+                                            evaluationCriteria={null}
+                                            activeCall={isActiveCallSelected ? activeCall : null}
+                                        />
+                                    </>
+                                )}
+                            </div>
+                        )}
                     </div>
                     <CriteriaDrawer
                         isOpen={isDrawerOpen}
