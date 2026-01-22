@@ -1830,26 +1830,46 @@
             const getDuration = () => {
                 // Check details first (more complete data)
                 if (details) {
-                    // Check analysis object (ElevenLabs often puts duration here)
+                    const metadata = details.metadata || {};
+
+                    // Per ElevenLabs docs: metadata.call_duration_secs is the official field
+                    if (typeof metadata.call_duration_secs === 'number' && metadata.call_duration_secs > 0) {
+                        return formatDuration(metadata.call_duration_secs);
+                    }
+
+                    // Calculate from metadata start/end timestamps (also from ElevenLabs docs)
+                    const startUnix = metadata.start_time_unix_secs;
+                    const acceptedUnix = metadata.accepted_time_unix_secs;
+                    // If we have start time, calculate duration to now for completed calls
+                    if (typeof startUnix === 'number' && startUnix > 0) {
+                        // Look for end time in metadata
+                        const endUnix = metadata.end_time_unix_secs;
+                        if (typeof endUnix === 'number' && endUnix > 0) {
+                            const calcDuration = endUnix - startUnix;
+                            if (calcDuration > 0) return formatDuration(calcDuration);
+                        }
+                    }
+
+                    // Per ElevenLabs docs: transcript entries have time_in_call_secs
+                    if (details.transcript?.length > 0) {
+                        const lastMsg = details.transcript[details.transcript.length - 1];
+                        if (typeof lastMsg.time_in_call_secs === 'number' && lastMsg.time_in_call_secs > 0) {
+                            return formatDuration(Math.ceil(lastMsg.time_in_call_secs));
+                        }
+                    }
+
+                    // Fallback: check other possible locations
                     const analysis = details.analysis || {};
                     const durationSecs = details.call_duration_secs
-                        || details.call_duration
-                        || details.duration_seconds
-                        || details.duration
-                        || details.conversation_duration
                         || analysis.call_duration_secs
-                        || analysis.call_duration
-                        || analysis.duration_secs
-                        || analysis.duration
-                        || details.metadata?.call_duration_secs
-                        || details.metadata?.call_duration
-                        || details.metadata?.duration;
+                        || metadata.call_duration
+                        || metadata.duration;
 
                     if (typeof durationSecs === 'number' && durationSecs > 0) {
                         return formatDuration(durationSecs);
                     }
 
-                    // Calculate from start/end time if available
+                    // Legacy: Calculate from details start/end time
                     const startTime = details.start_time || details.start_time_unix_secs;
                     const endTime = details.end_time || details.end_time_unix_secs;
                     if (startTime && endTime) {
@@ -1857,19 +1877,6 @@
                         const end = typeof endTime === 'number' ? endTime * 1000 : new Date(endTime).getTime();
                         const calcDuration = Math.floor((end - start) / 1000);
                         if (calcDuration > 0) return formatDuration(calcDuration);
-                    }
-
-                    // Calculate from transcript timestamps (last message time)
-                    if (details.transcript?.length > 0) {
-                        const lastMsg = details.transcript[details.transcript.length - 1];
-                        // Check for time_in_call_secs or similar timestamp fields
-                        const lastTime = lastMsg.time_in_call_secs
-                            || lastMsg.end_time_in_call_secs
-                            || lastMsg.timestamp_secs
-                            || lastMsg.time;
-                        if (typeof lastTime === 'number' && lastTime > 0) {
-                            return formatDuration(Math.ceil(lastTime));
-                        }
                     }
                 }
 
@@ -2491,12 +2498,20 @@
                                 console.log(`[gin-ai] Detail response for ${conv.conversation_id}: status=${detailRes.status}`);
                                 if (detailRes.ok) {
                                     const details = await detailRes.json();
-                                    // Debug: log keys and analysis to find duration
-                                    console.log(`[gin-ai] Conv ${conv.conversation_id} keys:`, Object.keys(details));
-                                    console.log(`[gin-ai] Conv ${conv.conversation_id} analysis:`, details.analysis);
+                                    // Debug: log duration-related fields specifically
+                                    const m = details.metadata || {};
+                                    console.log(`[gin-ai] Conv ${conv.conversation_id} DURATION FIELDS:`, {
+                                        'metadata.call_duration_secs': m.call_duration_secs,
+                                        'metadata.start_time_unix_secs': m.start_time_unix_secs,
+                                        'metadata.end_time_unix_secs': m.end_time_unix_secs,
+                                        'details.call_duration_secs': details.call_duration_secs,
+                                        'transcript_length': details.transcript?.length || 0,
+                                        'transcript_last_time_in_call_secs': details.transcript?.length > 0 ? details.transcript[details.transcript.length - 1].time_in_call_secs : null
+                                    });
+                                    console.log(`[gin-ai] Conv ${conv.conversation_id} metadata FULL:`, JSON.stringify(m, null, 2));
                                     if (details.transcript?.length > 0) {
-                                        console.log(`[gin-ai] Transcript[0]:`, details.transcript[0]);
-                                        console.log(`[gin-ai] Transcript[last]:`, details.transcript[details.transcript.length - 1]);
+                                        const lastMsg = details.transcript[details.transcript.length - 1];
+                                        console.log(`[gin-ai] Transcript[last] ALL keys:`, Object.keys(lastMsg));
                                     }
                                     return transformConversation(conv, details);
                                 } else {
