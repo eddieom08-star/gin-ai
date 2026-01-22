@@ -1830,27 +1830,54 @@
             const getDuration = () => {
                 // Check details first (more complete data)
                 if (details) {
-                    if (details.call_duration) return formatDuration(details.call_duration);
-                    if (details.duration) return formatDuration(details.duration);
-                    if (details.metadata?.call_duration) return formatDuration(details.metadata.call_duration);
+                    // Try all possible field names from ElevenLabs API
+                    const durationSecs = details.call_duration_secs
+                        || details.call_duration
+                        || details.duration_seconds
+                        || details.duration
+                        || details.conversation_duration
+                        || details.metadata?.call_duration_secs
+                        || details.metadata?.call_duration
+                        || details.metadata?.duration;
+
+                    if (typeof durationSecs === 'number' && durationSecs > 0) {
+                        return formatDuration(durationSecs);
+                    }
+
                     // Calculate from start/end time if available
-                    if (details.start_time && details.end_time) {
-                        const start = new Date(details.start_time).getTime();
-                        const end = new Date(details.end_time).getTime();
-                        const durationSecs = Math.floor((end - start) / 1000);
-                        if (durationSecs > 0) return formatDuration(durationSecs);
+                    const startTime = details.start_time || details.start_time_unix_secs;
+                    const endTime = details.end_time || details.end_time_unix_secs;
+                    if (startTime && endTime) {
+                        const start = typeof startTime === 'number' ? startTime * 1000 : new Date(startTime).getTime();
+                        const end = typeof endTime === 'number' ? endTime * 1000 : new Date(endTime).getTime();
+                        const calcDuration = Math.floor((end - start) / 1000);
+                        if (calcDuration > 0) return formatDuration(calcDuration);
                     }
                 }
+
                 // Fall back to conv (list API)
-                if (conv.call_duration) return formatDuration(conv.call_duration);
-                if (conv.duration) return typeof conv.duration === 'number' ? formatDuration(conv.duration) : conv.duration;
-                // Calculate from conv start/end
-                if (conv.start_time && conv.end_time) {
-                    const start = new Date(conv.start_time).getTime();
-                    const end = new Date(conv.end_time).getTime();
-                    const durationSecs = Math.floor((end - start) / 1000);
-                    if (durationSecs > 0) return formatDuration(durationSecs);
+                const convDuration = conv.call_duration_secs
+                    || conv.call_duration
+                    || conv.duration_seconds
+                    || conv.conversation_duration;
+
+                if (typeof convDuration === 'number' && convDuration > 0) {
+                    return formatDuration(convDuration);
                 }
+                if (conv.duration) {
+                    return typeof conv.duration === 'number' ? formatDuration(conv.duration) : conv.duration;
+                }
+
+                // Calculate from conv start/end
+                const convStart = conv.start_time || conv.start_time_unix_secs;
+                const convEnd = conv.end_time || conv.end_time_unix_secs;
+                if (convStart && convEnd) {
+                    const start = typeof convStart === 'number' ? convStart * 1000 : new Date(convStart).getTime();
+                    const end = typeof convEnd === 'number' ? convEnd * 1000 : new Date(convEnd).getTime();
+                    const calcDuration = Math.floor((end - start) / 1000);
+                    if (calcDuration > 0) return formatDuration(calcDuration);
+                }
+
                 return '0:00';
             };
 
@@ -2443,6 +2470,15 @@
                                 const detailRes = await fetch(`${API_BASE}/conversations/${conv.conversation_id}`);
                                 if (detailRes.ok) {
                                     const details = await detailRes.json();
+                                    // Debug: log duration-related fields
+                                    console.log(`[gin-ai] Conv ${conv.conversation_id} duration fields:`, {
+                                        call_duration_secs: details.call_duration_secs,
+                                        call_duration: details.call_duration,
+                                        duration: details.duration,
+                                        start_time: details.start_time,
+                                        end_time: details.end_time,
+                                        metadata: details.metadata
+                                    });
                                     return transformConversation(conv, details);
                                 }
                             } catch (e) {
