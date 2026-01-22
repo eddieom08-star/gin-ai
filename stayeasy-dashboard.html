@@ -2464,13 +2464,17 @@
                     }
 
                     // Fetch full details for each completed conversation
+                    console.log('[gin-ai] Completed conversations to fetch details for:', completedConvs.length, completedConvs.map(c => c.conversation_id));
                     const detailedConvs = await Promise.all(
                         completedConvs.slice(0, 20).map(async (conv) => {
                             try {
+                                console.log(`[gin-ai] Fetching details for ${conv.conversation_id}...`);
                                 const detailRes = await fetch(`${API_BASE}/conversations/${conv.conversation_id}`);
+                                console.log(`[gin-ai] Detail response for ${conv.conversation_id}: status=${detailRes.status}`);
                                 if (detailRes.ok) {
                                     const details = await detailRes.json();
-                                    // Debug: log duration-related fields
+                                    // Debug: log ALL fields from details to find duration
+                                    console.log(`[gin-ai] Conv ${conv.conversation_id} FULL details:`, details);
                                     console.log(`[gin-ai] Conv ${conv.conversation_id} duration fields:`, {
                                         call_duration_secs: details.call_duration_secs,
                                         call_duration: details.call_duration,
@@ -2480,10 +2484,14 @@
                                         metadata: details.metadata
                                     });
                                     return transformConversation(conv, details);
+                                } else {
+                                    console.warn(`[gin-ai] Detail fetch failed for ${conv.conversation_id}: ${detailRes.status}`);
                                 }
                             } catch (e) {
-                                console.warn(`Failed to fetch details for ${conv.conversation_id}:`, e);
+                                console.warn(`[gin-ai] Exception fetching details for ${conv.conversation_id}:`, e);
                             }
+                            // Fallback: use list data and log what we have
+                            console.log(`[gin-ai] Using list data for ${conv.conversation_id}:`, conv);
                             return transformConversation(conv);
                         })
                     );
