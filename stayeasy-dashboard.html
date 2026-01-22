@@ -1830,12 +1830,17 @@
             const getDuration = () => {
                 // Check details first (more complete data)
                 if (details) {
-                    // Try all possible field names from ElevenLabs API
+                    // Check analysis object (ElevenLabs often puts duration here)
+                    const analysis = details.analysis || {};
                     const durationSecs = details.call_duration_secs
                         || details.call_duration
                         || details.duration_seconds
                         || details.duration
                         || details.conversation_duration
+                        || analysis.call_duration_secs
+                        || analysis.call_duration
+                        || analysis.duration_secs
+                        || analysis.duration
                         || details.metadata?.call_duration_secs
                         || details.metadata?.call_duration
                         || details.metadata?.duration;
@@ -1852,6 +1857,19 @@
                         const end = typeof endTime === 'number' ? endTime * 1000 : new Date(endTime).getTime();
                         const calcDuration = Math.floor((end - start) / 1000);
                         if (calcDuration > 0) return formatDuration(calcDuration);
+                    }
+
+                    // Calculate from transcript timestamps (last message time)
+                    if (details.transcript?.length > 0) {
+                        const lastMsg = details.transcript[details.transcript.length - 1];
+                        // Check for time_in_call_secs or similar timestamp fields
+                        const lastTime = lastMsg.time_in_call_secs
+                            || lastMsg.end_time_in_call_secs
+                            || lastMsg.timestamp_secs
+                            || lastMsg.time;
+                        if (typeof lastTime === 'number' && lastTime > 0) {
+                            return formatDuration(Math.ceil(lastTime));
+                        }
                     }
                 }
 
@@ -2473,16 +2491,13 @@
                                 console.log(`[gin-ai] Detail response for ${conv.conversation_id}: status=${detailRes.status}`);
                                 if (detailRes.ok) {
                                     const details = await detailRes.json();
-                                    // Debug: log ALL fields from details to find duration
-                                    console.log(`[gin-ai] Conv ${conv.conversation_id} FULL details:`, details);
-                                    console.log(`[gin-ai] Conv ${conv.conversation_id} duration fields:`, {
-                                        call_duration_secs: details.call_duration_secs,
-                                        call_duration: details.call_duration,
-                                        duration: details.duration,
-                                        start_time: details.start_time,
-                                        end_time: details.end_time,
-                                        metadata: details.metadata
-                                    });
+                                    // Debug: log keys and analysis to find duration
+                                    console.log(`[gin-ai] Conv ${conv.conversation_id} keys:`, Object.keys(details));
+                                    console.log(`[gin-ai] Conv ${conv.conversation_id} analysis:`, details.analysis);
+                                    if (details.transcript?.length > 0) {
+                                        console.log(`[gin-ai] Transcript[0]:`, details.transcript[0]);
+                                        console.log(`[gin-ai] Transcript[last]:`, details.transcript[details.transcript.length - 1]);
+                                    }
                                     return transformConversation(conv, details);
                                 } else {
                                     console.warn(`[gin-ai] Detail fetch failed for ${conv.conversation_id}: ${detailRes.status}`);
