@@ -778,7 +778,7 @@
             );
         };
 
-        const ConversationList = ({ conversations, selectedId, onSelect, filter, search, setSearch, loading, error, onRefresh, useMockData, onToggleDataSource, activeCall, onSelectActiveCall }) => {
+        const ConversationList = ({ conversations, selectedId, onSelect, filter, search, setSearch, loading, error, onRefresh, activeCall, onSelectActiveCall }) => {
             const filtered = useMemo(() => conversations.filter(c => {
                 const outcome = c.structuredSummary.outcome;
                 if (filter === 'resolved' && outcome !== 'resolved') return false;
@@ -811,13 +811,7 @@
                                 </button>
                             </div>
                         </div>
-                        <div className="flex items-center justify-between mb-3">
-                            <button onClick={onToggleDataSource}
-                                className={`px-2 py-1 rounded text-xs font-medium transition-colors ${useMockData ? 'bg-se-warning/20 text-se-warning' : 'bg-se-success/20 text-se-success'}`}>
-                                {useMockData ? 'Mock Data' : 'Live API'}
-                            </button>
-                            {error && <span className="text-xs text-se-error">Error: {error}</span>}
-                        </div>
+                        {error && <div className="mb-3"><span className="text-xs text-se-error">Error: {error}</span></div>}
                         <div className="relative">
                             <input type="text" placeholder="Search by property or topic..."
                                 value={search} onChange={e => setSearch(e.target.value)}
@@ -1457,11 +1451,39 @@
 
         // Transform ElevenLabs conversation to dashboard format
         const transformConversation = (conv, details = null) => {
+            // Get duration from multiple possible sources
+            const getDuration = () => {
+                // Check details first (more complete data)
+                if (details) {
+                    if (details.call_duration) return formatDuration(details.call_duration);
+                    if (details.duration) return formatDuration(details.duration);
+                    if (details.metadata?.call_duration) return formatDuration(details.metadata.call_duration);
+                    // Calculate from start/end time if available
+                    if (details.start_time && details.end_time) {
+                        const start = new Date(details.start_time).getTime();
+                        const end = new Date(details.end_time).getTime();
+                        const durationSecs = Math.floor((end - start) / 1000);
+                        if (durationSecs > 0) return formatDuration(durationSecs);
+                    }
+                }
+                // Fall back to conv (list API)
+                if (conv.call_duration) return formatDuration(conv.call_duration);
+                if (conv.duration) return typeof conv.duration === 'number' ? formatDuration(conv.duration) : conv.duration;
+                // Calculate from conv start/end
+                if (conv.start_time && conv.end_time) {
+                    const start = new Date(conv.start_time).getTime();
+                    const end = new Date(conv.end_time).getTime();
+                    const durationSecs = Math.floor((end - start) / 1000);
+                    if (durationSecs > 0) return formatDuration(durationSecs);
+                }
+                return '0:00';
+            };
+
             // Basic info from list API
             const base = {
                 id: conv.conversation_id || conv.id,
                 date: conv.start_time || conv.created_at || new Date().toISOString(),
-                duration: conv.call_duration ? formatDuration(conv.call_duration) : '0:00',
+                duration: getDuration(),
                 messageCount: details?.transcript?.length || conv.turn_count || 0,
                 channel: 'voice',
                 status: conv.status || 'successful',
@@ -1962,7 +1984,6 @@
             const [selectedId, setSelectedId] = useState(null);
             const [conversationFilter, setConversationFilter] = useState('all');
             const [search, setSearch] = useState('');
-            const [useMockData, setUseMockData] = useState(!USE_LIVE_API);
 
             // Active Call State
             const [activeCall, setActiveCall] = useState(null);
@@ -1994,14 +2015,8 @@
                 closeDrawer();
             };
 
-            // Fetch conversations from API
+            // Fetch conversations from API and combine with mock data
             const fetchConversations = async () => {
-                if (useMockData) {
-                    setConversations(MOCK_CONVERSATIONS);
-                    setLoading(false);
-                    return;
-                }
-
                 setLoading(true);
                 setError(null);
 
@@ -2014,16 +2029,6 @@
 
                     // ElevenLabs returns { conversations: [...] }
                     const convList = data.conversations || data || [];
-
-                    if (convList.length === 0) {
-                        // No live conversations, fall back to mock
-                        console.log('No live conversations found, using mock data');
-                        setConversations(MOCK_CONVERSATIONS);
-                        setActiveCall(null);
-                        setUseMockData(true);
-                        setLoading(false);
-                        return;
-                    }
 
                     // Separate active calls from completed conversations
                     // ElevenLabs statuses: 'processing', 'done', 'failed', etc.
@@ -2047,10 +2052,6 @@
                         setActiveCall(null);
                     }
 
-                    // Transform basic list first (completed conversations only)
-                    const basicConvs = completedConvs.map(c => transformConversation(c));
-                    setConversations(basicConvs);
-
                     // Fetch full details for each completed conversation
                     const detailedConvs = await Promise.all(
                         completedConvs.slice(0, 20).map(async (conv) => {
@@ -2067,13 +2068,14 @@
                         })
                     );
 
-                    setConversations(detailedConvs);
+                    // Combine live conversations with mock data (live first, then mock)
+                    const combinedConversations = [...detailedConvs, ...MOCK_CONVERSATIONS];
+                    setConversations(combinedConversations);
                 } catch (err) {
                     console.error('Failed to fetch conversations:', err);
                     setError(err.message);
-                    // Fall back to mock data on error
+                    // Fall back to mock data only on error
                     setConversations(MOCK_CONVERSATIONS);
-                    setUseMockData(true);
                 } finally {
                     setLoading(false);
                 }
@@ -2081,11 +2083,10 @@
 
             useEffect(() => {
                 fetchConversations();
-            }, [useMockData]);
+            }, []);
 
-            // Poll for active calls every 5 seconds when using live API
+            // Poll for active calls every 5 seconds
             useEffect(() => {
-                if (useMockData) return;
 
                 const pollActiveCalls = async () => {
                     try {
@@ -2136,10 +2137,6 @@
             // Check if selected ID is the active call
             const isActiveCallSelected = activeCall && selectedId === activeCall.id;
 
-            const toggleDataSource = () => {
-                setUseMockData(!useMockData);
-            };
-
             const isEvaluateMode = conversationFilter === 'evaluate';
 
             return (
@@ -2165,8 +2162,6 @@
                                         loading={loading}
                                         error={error}
                                         onRefresh={fetchConversations}
-                                        useMockData={useMockData}
-                                        onToggleDataSource={toggleDataSource}
                                         activeCall={activeCall}
                                         onSelectActiveCall={handleSelectActiveCall}
                                     />
@@ -2194,8 +2189,6 @@
                                         loading={loading}
                                         error={error}
                                         onRefresh={fetchConversations}
-                                        useMockData={useMockData}
-                                        onToggleDataSource={toggleDataSource}
                                         activeCall={activeCall}
                                         onSelectActiveCall={handleSelectActiveCall}
                                     />
