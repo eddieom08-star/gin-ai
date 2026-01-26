@@ -1962,6 +1962,34 @@
                     return mapStatus(conv.status, analysis);
                 };
 
+                // Derive end sentiment from evaluation results if not explicitly provided
+                const getEndSentiment = () => {
+                    // Use explicit sentiment if available
+                    if (analysis.user_sentiment_end) return analysis.user_sentiment_end;
+                    if (analysis.user_sentiment) return analysis.user_sentiment;
+
+                    // Derive from evaluation results
+                    const evalResults = analysis.evaluation_criteria_results_list || [];
+                    const evalObj = analysis.evaluation_criteria_results || {};
+
+                    // Check positive_outcome evaluation
+                    const positiveOutcome = evalResults.find(e => e.criteria_id === 'positive_outcome')
+                        || evalObj.positive_outcome;
+                    const issueResolved = evalResults.find(e => e.criteria_id === 'issue_resolved')
+                        || evalObj.issue_resolved;
+
+                    // If positive_outcome failed, customer was likely frustrated
+                    if (positiveOutcome?.result === 'failure') return 'frustrated';
+                    // If issue wasn't resolved and call was failure, customer was frustrated
+                    if (issueResolved?.result === 'failure' && analysis.call_successful === 'failure') return 'frustrated';
+                    // If issue wasn't resolved, at least neutral
+                    if (issueResolved?.result === 'failure') return 'neutral';
+                    // If positive outcome succeeded, satisfied
+                    if (positiveOutcome?.result === 'success') return 'satisfied';
+                    // Default to neutral (not satisfied - that was wrong)
+                    return 'neutral';
+                };
+
                 return {
                     ...base,
                     messageCount: transcript.length,
@@ -1971,7 +1999,7 @@
                         outcome: getOutcome(),
                         sentiment: {
                             start: analysis.user_sentiment_start || 'neutral',
-                            end: analysis.user_sentiment_end || analysis.user_sentiment || 'satisfied'
+                            end: getEndSentiment()
                         },
                         topics: extractTopics(),
                         actionItems: analysis.action_items || [],
