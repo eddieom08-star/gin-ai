@@ -1495,6 +1495,22 @@
                 };
             }
 
+            // Negative Outcome criteria - TRUE if customer was dissatisfied
+            if (criteriaId.includes('negative') || criteriaName.includes('negative') || criteriaName.includes('dissatisf')) {
+                const endSentiment = sentiment?.end || 'neutral';
+                const hasFrustration = transcriptText.includes('frustrat') || transcriptText.includes('upset') ||
+                    transcriptText.includes('complaint') || transcriptText.includes('terrible') ||
+                    transcriptText.includes('unacceptable') || transcriptText.includes('disappointed') ||
+                    transcriptText.includes('not fair') || transcriptText.includes('ridiculous');
+                const passed = endSentiment === 'frustrated' || hasFrustration || outcome === 'abandoned' || outcome === 'escalated';
+                return {
+                    passed,
+                    reasoning: passed
+                        ? `Customer showed signs of dissatisfaction. ${hasFrustration ? 'Negative language detected in conversation.' : `Sentiment ended as "${endSentiment}".`} Outcome: ${outcome}.`
+                        : `No significant negative sentiment detected. Customer sentiment: "${endSentiment}". Outcome: ${outcome}.`
+                };
+            }
+
             // Default evaluation based on conversation outcome
             const passed = outcome === 'resolved' || (sentiment?.end === 'positive');
             return {
@@ -1510,23 +1526,49 @@
             { id: 'issue_resolved', name: 'Issue Resolved', description: "Evaluate whether the customer's original issue was fully resolved.", instructions: 'Mark as successful if the agent provided a complete solution or answer, or appropriately escalated to a human agent.', passRate: 84, icon: 'Check' },
             { id: 'efficient_handling', name: 'Efficient Handling', description: 'Assess if the agent handled the conversation efficiently.', instructions: 'Evaluate based on response time, number of unnecessary messages, and directness of communication.', passRate: 91, icon: 'Clock' },
             { id: 'positive_outcome', name: 'Positive Outcome', description: 'Determine if the customer left with a positive impression.', instructions: 'Consider customer sentiment, explicit feedback, and whether they thanked the agent or expressed satisfaction.', passRate: 78, icon: 'TrendingUp' },
+            { id: 'negative_outcome', name: 'Negative Outcome', description: 'If the customer expressed dissatisfaction, frustration, or negative sentiment.', instructions: 'Mark as TRUE (passed) if the customer showed signs of frustration, made complaints, or expressed dissatisfaction.', passRate: 0, icon: 'AlertTriangle' },
         ];
 
         const SummaryPanel = ({ conversation, evaluationCriteria, isCollapsed, onToggleCollapse, isFullWidth = false }) => {
             const { structuredSummary, evaluationResults, proseSummary } = conversation;
 
             // Determine which evaluation results to display:
-            // 1. If we have API results from ElevenLabs, use those directly
-            // 2. Otherwise, run local evaluation against criteria
+            // 1. Start with API results from ElevenLabs if available
+            // 2. Add local evaluations for any custom criteria not in API results
             const hasApiResults = evaluationResults && evaluationResults.length > 0;
+            const criteriaToUse = evaluationCriteria || DEFAULT_CRITERIA;
 
             let criteriaBasedResults;
             if (hasApiResults) {
-                // Use ElevenLabs evaluation results directly
-                criteriaBasedResults = evaluationResults;
+                // Start with ElevenLabs results
+                criteriaBasedResults = [...evaluationResults];
+
+                // Add local evaluations for custom criteria not already in API results
+                const apiCriteriaIds = evaluationResults.map(r =>
+                    r.criteriaId?.toLowerCase() || r.criteriaName?.toLowerCase().replace(/\s+/g, '_')
+                );
+
+                criteriaToUse.forEach(c => {
+                    const criteriaId = c.id.toLowerCase();
+                    const alreadyHasResult = apiCriteriaIds.some(id =>
+                        id === criteriaId ||
+                        id.includes(criteriaId.split('_')[0]) ||
+                        criteriaId.includes(id.split('_')[0])
+                    );
+
+                    if (!alreadyHasResult) {
+                        // Run local evaluation for this custom criterion
+                        const evaluation = evaluateConversation(conversation, c);
+                        criteriaBasedResults.push({
+                            criteriaId: c.id,
+                            criteriaName: c.name,
+                            passed: evaluation.passed,
+                            reasoning: evaluation.reasoning
+                        });
+                    }
+                });
             } else {
-                // Fall back to local evaluation using criteria
-                const criteriaToUse = evaluationCriteria || DEFAULT_CRITERIA;
+                // No API results - run local evaluation for all criteria
                 criteriaBasedResults = criteriaToUse.map(c => {
                     const evaluation = evaluateConversation(conversation, c);
                     return {
