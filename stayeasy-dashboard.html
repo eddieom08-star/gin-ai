@@ -1972,18 +1972,25 @@
                     const evalResults = analysis.evaluation_criteria_results_list || [];
                     const evalObj = analysis.evaluation_criteria_results || {};
 
+                    // Check negative_outcome evaluation (new criterion)
+                    const negativeOutcome = evalResults.find(e => e.criteria_id === 'negative_outcome')
+                        || evalObj.negative_outcome;
                     // Check positive_outcome evaluation
                     const positiveOutcome = evalResults.find(e => e.criteria_id === 'positive_outcome')
                         || evalObj.positive_outcome;
                     const issueResolved = evalResults.find(e => e.criteria_id === 'issue_resolved')
                         || evalObj.issue_resolved;
 
+                    // If negative_outcome succeeded (customer WAS dissatisfied), return frustrated
+                    if (negativeOutcome?.result === 'success') return 'frustrated';
                     // If positive_outcome failed, customer was likely frustrated
                     if (positiveOutcome?.result === 'failure') return 'frustrated';
                     // If issue wasn't resolved and call was failure, customer was frustrated
                     if (issueResolved?.result === 'failure' && analysis.call_successful === 'failure') return 'frustrated';
                     // If issue wasn't resolved, at least neutral
                     if (issueResolved?.result === 'failure') return 'neutral';
+                    // If negative_outcome failed (customer was NOT dissatisfied), and positive passed, satisfied
+                    if (negativeOutcome?.result === 'failure' && positiveOutcome?.result === 'success') return 'satisfied';
                     // If positive outcome succeeded, satisfied
                     if (positiveOutcome?.result === 'success') return 'satisfied';
                     // Default to neutral (not satisfied - that was wrong)
@@ -2537,6 +2544,13 @@
                                         'transcript_last_time_in_call_secs': details.transcript?.length > 0 ? details.transcript[details.transcript.length - 1].time_in_call_secs : null
                                     });
                                     console.log(`[gin-ai] Conv ${conv.conversation_id} metadata FULL:`, JSON.stringify(m, null, 2));
+                                    // Debug: log evaluation criteria results
+                                    const analysis = details.analysis || {};
+                                    console.log(`[gin-ai] Conv ${conv.conversation_id} EVALUATION CRITERIA:`, {
+                                        'evaluation_criteria_results_list': analysis.evaluation_criteria_results_list,
+                                        'evaluation_criteria_results': analysis.evaluation_criteria_results,
+                                        'call_successful': analysis.call_successful
+                                    });
                                     if (details.transcript?.length > 0) {
                                         const lastMsg = details.transcript[details.transcript.length - 1];
                                         console.log(`[gin-ai] Transcript[last] ALL keys:`, Object.keys(lastMsg));
